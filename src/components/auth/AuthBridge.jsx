@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useAuthStore } from '@/store/authStore';
-import { createClient } from '@/lib/supabase'; // The new Supabase bridge!
+import { createClient } from '@/lib/supabase';
 
 import 'react-phone-number-input/style.css';
 import PhoneInput from 'react-phone-number-input';
@@ -34,7 +34,7 @@ export default function AuthBridge() {
   const handlePhoneChange = (value) => setFormData({ ...formData, phone: value });
   const handleWhatsappChange = (value) => setFormData({ ...formData, whatsapp: value });
 
-  // Supabase Native Google Login
+  // --- SUPABASE NATIVE GOOGLE LOGIN ---
   const handleGoogleLogin = async () => {
     setLoading(true);
     try {
@@ -46,7 +46,7 @@ export default function AuthBridge() {
       });
       if (error) throw error;
     } catch (err) {
-      setError(err.message || "Could not sync Google account. Please try again.");
+      setError(err.message || "Could not connect to Google. Please try again.");
       setLoading(false);
     }
   };
@@ -106,7 +106,9 @@ export default function AuthBridge() {
 
     try {
       if (isLogin) {
-        // --- SUPABASE SIGN IN FLOW ---
+        // ==========================================
+        // SUPABASE SIGN IN FLOW
+        // ==========================================
         const { data, error: authError } = await supabase.auth.signInWithPassword({
           email: formData.email,
           password: formData.password,
@@ -123,7 +125,9 @@ export default function AuthBridge() {
         });
 
       } else {
-        // --- SUPABASE SIGN UP FLOW ---
+        // ==========================================
+        // SUPABASE SIGN UP FLOW
+        // ==========================================
         const { data, error: signUpError } = await supabase.auth.signUp({
           email: formData.email,
           password: formData.password,
