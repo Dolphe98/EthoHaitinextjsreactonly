@@ -2,73 +2,35 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { fetchAllCategories, fetchProductsByCategory } from '@/services/products'; // NEW ENGINE IMPORT
 
 export default function AlternatingCategoryGrid() {
   const [zippedCategories, setZippedCategories] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // 1. Fetch ALL categories
-    fetch("https://backend.ethohaiti.com/wp-json/wc/store/v1/products/categories?per_page=100")
-      .then(res => {
-        if (!res.ok) throw new Error("Failed to fetch categories");
-        return res.json();
-      })
+    // 1. Fetch ALL categories from the new Printify Engine
+    fetchAllCategories()
       .then(async (data) => {
-        // --- THE FIX: Text Scrubber for the Grid ---
         const cleanName = (name) => {
           if (!name) return "";
           return name.replace(/&#8217;/g, "'").replace(/&#8216;/g, "'").replace(/&amp;/g, "&").replace(/&#038;/g, "&");
         };
 
-        // Find parents and active subcategories
-        const parents = data.filter(cat => cat.parent === 0);
-        const subcategories = data.filter(cat => cat.parent !== 0 && cat.count > 0);
-
-        // Group subcategories by their parent to zip them
-        const groups = {};
-        parents.forEach(p => { groups[p.id] = []; });
-        
-        subcategories.forEach(sub => {
-           if(groups[sub.parent]) {
-             groups[sub.parent].push({
-               ...sub,
-               name: cleanName(sub.name), // Scrubs the Subcategory name for the title
-               // Scrubs the Parent's name for the Badge Tag
-               genderTag: cleanName(parents.find(p => p.id === sub.parent)?.name) || "Collection"
-             });
-           }
-        });
-
-        // "Deal the cards" to create the alternating effect
-        const zipped = [];
-        let moreItems = true;
-        let index = 0;
-        
-        while (moreItems) {
-          moreItems = false;
-          // Loop through every parent group and take 1 item, creating a perfect mix
-          for (const parentId in groups) {
-            if (groups[parentId][index]) {
-              zipped.push(groups[parentId][index]);
-              moreItems = true;
-            }
-          }
-          index++;
-        }
-
-        // Fetch exactly 1 product for each subcategory to get the mockup/flat images
+        // Printify tags are flat, so everything is technically a "parent" for now
         const categoriesWithImages = await Promise.all(
-          zipped.map(async (category) => {
+          data.map(async (category) => {
             try {
-              const res = await fetch(`https://backend.ethohaiti.com/wp-json/wc/store/v1/products?category=${category.id}&per_page=1`);
-              const products = await res.json();
-              const product = products[0]; 
+              // Ask the new engine for products matching this category tag
+              const products = await fetchProductsByCategory(category.slug);
+              const product = products[0]; // Just grab the first one to use its image
 
               return {
                 ...category,
-                img1: product?.images[0]?.src || "https://placehold.co/500x500?text=No+Mockup",
-                img2: product?.images[1]?.src || product?.images[0]?.src || "https://placehold.co/500x500?text=No+Flat"
+                name: cleanName(category.name),
+                genderTag: "Collection",
+                img1: product?.images?.[0]?.src || "https://placehold.co/500x500?text=No+Image",
+                img2: product?.images?.[1]?.src || product?.images?.[0]?.src || "https://placehold.co/500x500?text=No+Image"
               };
             } catch (err) {
               return { ...category, img1: "https://placehold.co/500x500?text=Error", img2: "https://placehold.co/500x500?text=Error" };
@@ -76,7 +38,10 @@ export default function AlternatingCategoryGrid() {
           })
         );
 
-        setZippedCategories(categoriesWithImages);
+        // Only show categories that actually have products in them
+        const validCategories = categoriesWithImages.filter(cat => cat.img1 && !cat.img1.includes('Error') && !cat.img1.includes('No+Image'));
+
+        setZippedCategories(validCategories);
         setIsLoading(false); 
       })
       .catch(err => {
@@ -99,13 +64,13 @@ export default function AlternatingCategoryGrid() {
   return (
     <section className="px-4 sm:px-6 lg:px-8 max-w-screen-2xl mx-auto mb-12">
       
-      <style>{`
+      <style dangerouslySetInnerHTML={{__html: `
         @keyframes autoCrossfade {
           0% { opacity: 1; } 40% { opacity: 1; }
           50% { opacity: 0; } 90% { opacity: 0; } 100% { opacity: 1; }
         }
         .animate-crossfade { animation: autoCrossfade 6s infinite; }
-      `}</style>
+      `}} />
 
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-2xl font-extrabold text-ethoDark border-l-4 border-haitiRed pl-3">
