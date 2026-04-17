@@ -3,50 +3,49 @@
 import { cache } from 'react';
 
 // ============================================================================
-// THE PRINTIFY ENGINE v2.0 (High Performance & Auto-Categorization)
+// THE PRINTIFY ENGINE (Pure URL Fix)
 // ============================================================================
 
 const PRINTIFY_SHOP_ID = process.env.PRINTIFY_SHOP_ID;
 const PRINTIFY_TOKEN = process.env.PRINTIFY_API_TOKEN;
 
-// We force the limit to 100 to get your whole catalog in one single, fast request
-const PRINTIFY_URL = `https://api.printify.com/v1/shops/${PRINTIFY_SHOP_ID}/products.json?limit=100`;
+// REMOVED query parameters. Purest endpoint possible.
+const PRINTIFY_URL = `https://api.printify.com/v1/shops/${PRINTIFY_SHOP_ID}/products.json`;
 
 const HEADERS = {
   'Authorization': `Bearer ${PRINTIFY_TOKEN}`,
   'Content-Type': 'application/json'
 };
 
-// These are your "Parent" categories. Any tag that matches these becomes a Main menu item.
 const MAIN_CATEGORIES = ['men', 'women', 'unisex', 'kids', 'accessories', 'home', 'collection'];
 
 function capitalize(str) {
-  return str.charAt(0).toUpperCase() + str.slice(1);
+  return str && typeof str === 'string' ? str.charAt(0).toUpperCase() + str.slice(1) : '';
 }
 
 // ----------------------------------------------------------------------------
 // THE TRANSLATOR
 // ----------------------------------------------------------------------------
 function translateToWooCommerce(p) {
-  const activeVariants = p.variants.filter(v => v.is_enabled);
+  const activeVariants = p.variants ? p.variants.filter(v => v.is_enabled) : [];
   const lowestPrice = activeVariants.length > 0 
     ? Math.min(...activeVariants.map(v => v.price)) / 100 
     : 0;
 
   const formattedPrice = `$${lowestPrice.toFixed(2)}`;
 
-  const attributes = p.options.map(opt => ({
+  const attributes = (p.options || []).map(opt => ({
     name: opt.name,
-    options: opt.values.map(val => val.title),
-    terms: opt.values.map(val => ({ name: val.title }))
+    options: (opt.values || []).map(val => val.title),
+    terms: (opt.values || []).map(val => ({ name: val.title }))
   }));
 
   const variations = activeVariants.map(variant => {
-    const varAttributes = variant.options.map(optId => {
+    const varAttributes = (variant.options || []).map(optId => {
       let attrName = "";
       let attrValue = "";
-      p.options.forEach(opt => {
-        const foundVal = opt.values.find(v => v.id === optId);
+      (p.options || []).forEach(opt => {
+        const foundVal = (opt.values || []).find(v => v.id === optId);
         if (foundVal) {
           attrName = opt.name;
           attrValue = foundVal.title;
@@ -55,7 +54,7 @@ function translateToWooCommerce(p) {
       return { name: attrName, option: attrValue, value: attrValue };
     });
 
-    const varImage = p.images.find(img => img.variant_ids.includes(variant.id));
+    const varImage = (p.images || []).find(img => (img.variant_ids || []).includes(variant.id));
 
     return {
       id: variant.id,
@@ -66,23 +65,27 @@ function translateToWooCommerce(p) {
     };
   });
 
-  const pTags = p.tags.map(t => t.toLowerCase().trim());
+  const pTags = (p.tags || []).map(t => typeof t === 'string' ? t.toLowerCase().trim() : '');
   let parents = pTags.filter(t => MAIN_CATEGORIES.includes(t));
   if (parents.length === 0) parents = ['collection']; 
 
   const categories = [];
-  pTags.forEach(tag => categories.push({ slug: tag.replace(/\s+/g, '-') }));
-  parents.forEach(parent => categories.push({ slug: parent.replace(/\s+/g, '-') }));
+  pTags.forEach(tag => {
+      if(tag) categories.push({ slug: tag.replace(/\s+/g, '-') });
+  });
+  parents.forEach(parent => {
+      if(parent) categories.push({ slug: parent.replace(/\s+/g, '-') });
+  });
 
   return {
     id: p.id,
-    name: p.title,
-    slug: p.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, ''),
-    description: p.description,
-    short_description: p.description.substring(0, 150) + "...",
+    name: p.title || "Unnamed Product",
+    slug: p.title ? p.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '') : `product-${p.id}`,
+    description: p.description || "",
+    short_description: p.description ? p.description.substring(0, 150) + "..." : "",
     price: lowestPrice,
     price_html: formattedPrice,
-    images: p.images.map(img => ({ src: img.src })),
+    images: (p.images || []).map(img => ({ src: img.src })),
     attributes: attributes,
     variations: variations,
     categories: categories,
@@ -91,27 +94,33 @@ function translateToWooCommerce(p) {
 }
 
 // ----------------------------------------------------------------------------
-// THE REACT CACHED FETCH
+// THE API FETCH
 // ----------------------------------------------------------------------------
 export const fetchAllProducts = cache(async () => {
   if (!PRINTIFY_SHOP_ID || !PRINTIFY_TOKEN) {
-    console.error("CRITICAL: Missing Printify API Keys in Environment Variables.");
+    console.error("Missing Printify Keys!");
     return [];
   }
 
+  // LOGGING THE URL: This will tell us if PRINTIFY_SHOP_ID is undefined in Vercel
+  console.log("Attempting to fetch from:", PRINTIFY_URL);
+
   try {
-    const res = await fetch(PRINTIFY_URL, { headers: HEADERS, next: { revalidate: 60 } });
-    if (!res.ok) throw new Error(`Printify API Error: ${res.status}`);
+    const res = await fetch(PRINTIFY_URL, { headers: HEADERS, cache: 'no-store' });
+    
+    if (!res.ok) {
+       // Deep error logging
+       const errText = await res.text();
+       console.error(`Printify API Error details: Status ${res.status}, Message: ${errText}`);
+       throw new Error(`Printify API Error: ${res.status}`);
+    }
     
     const data = await res.json();
+    const allProducts = data.data || [];
     
-    // MANAGER FIX: Removed 'p.visible === true'. Custom API stores don't use the visible flag!
-    // Now we just check if the product has at least one active variant.
-    const activeProducts = data.data.filter(p => p.variants && p.variants.some(v => v.is_enabled));
-    
-    return activeProducts.map(translateToWooCommerce);
+    return allProducts.map(translateToWooCommerce);
   } catch (error) {
-    console.error("Error fetching from Printify:", error);
+    console.error("Fetch function failed:", error);
     return [];
   }
 });
