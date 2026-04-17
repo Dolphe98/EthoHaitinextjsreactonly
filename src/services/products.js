@@ -94,7 +94,10 @@ function translateToWooCommerce(p) {
 // THE REACT CACHED FETCH
 // ----------------------------------------------------------------------------
 export const fetchAllProducts = cache(async () => {
-  if (!PRINTIFY_SHOP_ID || !PRINTIFY_TOKEN) return [];
+  if (!PRINTIFY_SHOP_ID || !PRINTIFY_TOKEN) {
+    console.error("CRITICAL: Missing Printify API Keys in Environment Variables.");
+    return [];
+  }
 
   try {
     const res = await fetch(PRINTIFY_URL, { headers: HEADERS, next: { revalidate: 60 } });
@@ -102,8 +105,9 @@ export const fetchAllProducts = cache(async () => {
     
     const data = await res.json();
     
-    // MANAGER FIX: STRICT FILTER FOR PUBLISHED ONLY (visible === true)
-    const activeProducts = data.data.filter(p => p.visible === true && p.variants.some(v => v.is_enabled));
+    // MANAGER FIX: Removed 'p.visible === true'. Custom API stores don't use the visible flag!
+    // Now we just check if the product has at least one active variant.
+    const activeProducts = data.data.filter(p => p.variants && p.variants.some(v => v.is_enabled));
     
     return activeProducts.map(translateToWooCommerce);
   } catch (error) {
