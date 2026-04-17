@@ -18,7 +18,6 @@ const HEADERS = {
 };
 
 // These are your "Parent" categories. Any tag that matches these becomes a Main menu item.
-// All other tags on a shirt will automatically become Subcategories under these parents.
 const MAIN_CATEGORIES = ['men', 'women', 'unisex', 'kids', 'accessories', 'home', 'collection'];
 
 function capitalize(str) {
@@ -29,7 +28,6 @@ function capitalize(str) {
 // THE TRANSLATOR
 // ----------------------------------------------------------------------------
 function translateToWooCommerce(p) {
-  // 1. Find the lowest active price
   const activeVariants = p.variants.filter(v => v.is_enabled);
   const lowestPrice = activeVariants.length > 0 
     ? Math.min(...activeVariants.map(v => v.price)) / 100 
@@ -37,14 +35,12 @@ function translateToWooCommerce(p) {
 
   const formattedPrice = `$${lowestPrice.toFixed(2)}`;
 
-  // 2. Map Attributes
   const attributes = p.options.map(opt => ({
     name: opt.name,
     options: opt.values.map(val => val.title),
     terms: opt.values.map(val => ({ name: val.title }))
   }));
 
-  // 3. Map Variations
   const variations = activeVariants.map(variant => {
     const varAttributes = variant.options.map(optId => {
       let attrName = "";
@@ -70,10 +66,9 @@ function translateToWooCommerce(p) {
     };
   });
 
-  // 4. Map Categories (Ensure the product responds to both its Parent and Child slugs)
   const pTags = p.tags.map(t => t.toLowerCase().trim());
   let parents = pTags.filter(t => MAIN_CATEGORIES.includes(t));
-  if (parents.length === 0) parents = ['collection']; // Fallback if you forgot to tag it Men/Women
+  if (parents.length === 0) parents = ['collection']; 
 
   const categories = [];
   pTags.forEach(tag => categories.push({ slug: tag.replace(/\s+/g, '-') }));
@@ -96,20 +91,19 @@ function translateToWooCommerce(p) {
 }
 
 // ----------------------------------------------------------------------------
-// THE REACT CACHED FETCH (Prevents Computer Freezing!)
+// THE REACT CACHED FETCH
 // ----------------------------------------------------------------------------
 export const fetchAllProducts = cache(async () => {
   if (!PRINTIFY_SHOP_ID || !PRINTIFY_TOKEN) return [];
 
   try {
-    // Next.js will cache this response for 60 seconds
     const res = await fetch(PRINTIFY_URL, { headers: HEADERS, next: { revalidate: 60 } });
     if (!res.ok) throw new Error(`Printify API Error: ${res.status}`);
     
     const data = await res.json();
     
-    // STRICT FILTER: Only return products that are visible and have active variants!
-    const activeProducts = data.data.filter(p => p.visible !== false && p.variants.some(v => v.is_enabled));
+    // MANAGER FIX: STRICT FILTER FOR PUBLISHED ONLY (visible === true)
+    const activeProducts = data.data.filter(p => p.visible === true && p.variants.some(v => v.is_enabled));
     
     return activeProducts.map(translateToWooCommerce);
   } catch (error) {
@@ -119,7 +113,7 @@ export const fetchAllProducts = cache(async () => {
 });
 
 // ----------------------------------------------------------------------------
-// HELPER FUNCTIONS (These now run instantly from memory, no extra API calls!)
+// HELPER FUNCTIONS
 // ----------------------------------------------------------------------------
 
 export async function fetchProductBySlug(slug) {
@@ -148,7 +142,6 @@ export async function fetchAllCategories() {
 
     if (productParents.length === 0) productParents.push('collection');
 
-    // Build the Parent -> Child Hierarchy automatically
     productParents.forEach(parentName => {
        if (!parentsMap.has(parentName)) {
            parentsMap.set(parentName, { 
