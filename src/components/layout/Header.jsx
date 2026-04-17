@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCartStore } from '../../store/cartStore';
 import { useAuthStore } from '../../store/authStore'; 
-import { fetchAllCategories } from '@/services/products'; // NEW ENGINE IMPORT
 
 export default function Header() {
   const cart = useCartStore((state) => state.cart);
@@ -66,7 +65,8 @@ export default function Header() {
 
   // --- THE NEW PRINTIFY FETCH ---
   useEffect(() => {
-    fetchAllCategories()
+    fetch('/api/categories')
+      .then(res => res.json())
       .then(data => {
         const cleanName = (name) => name.replace(/&#8217;/g, "'").replace(/&#8216;/g, "'").replace(/&amp;/g, "&").replace(/&#038;/g, "&");
 

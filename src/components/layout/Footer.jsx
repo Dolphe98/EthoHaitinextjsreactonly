@@ -2,13 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { fetchAllCategories } from '@/services/products'; // NEW ENGINE IMPORT
 
 export default function Footer() {
   const [footerCategories, setFooterCategories] = useState([]);
 
   useEffect(() => {
-    fetchAllCategories()
+    fetch('/api/categories')
+      .then(res => res.json())
       .then(data => {
         const cleanName = (name) => {
           if (!name) return "";
