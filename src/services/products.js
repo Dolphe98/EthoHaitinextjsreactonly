@@ -1,21 +1,32 @@
 "use server";
 
+import { cache } from 'react';
+
 // ============================================================================
-// THE PRINTIFY ENGINE (Server-Side Only)
-// This safely fetches from Printify and translates it into WooCommerce format.
+// THE PRINTIFY ENGINE v2.0 (High Performance & Auto-Categorization)
 // ============================================================================
 
 const PRINTIFY_SHOP_ID = process.env.PRINTIFY_SHOP_ID;
 const PRINTIFY_TOKEN = process.env.PRINTIFY_API_TOKEN;
-const PRINTIFY_URL = `https://api.printify.com/v1/shops/${PRINTIFY_SHOP_ID}/products.json`;
+
+// We force the limit to 100 to get your whole catalog in one single, fast request
+const PRINTIFY_URL = `https://api.printify.com/v1/shops/${PRINTIFY_SHOP_ID}/products.json?limit=100`;
 
 const HEADERS = {
   'Authorization': `Bearer ${PRINTIFY_TOKEN}`,
   'Content-Type': 'application/json'
 };
 
+// These are your "Parent" categories. Any tag that matches these becomes a Main menu item.
+// All other tags on a shirt will automatically become Subcategories under these parents.
+const MAIN_CATEGORIES = ['men', 'women', 'unisex', 'kids', 'accessories', 'home', 'collection'];
+
+function capitalize(str) {
+  return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
 // ----------------------------------------------------------------------------
-// THE TRANSLATOR: Converts Printify JSON into WooCommerce JSON
+// THE TRANSLATOR
 // ----------------------------------------------------------------------------
 function translateToWooCommerce(p) {
   // 1. Find the lowest active price
@@ -26,14 +37,14 @@ function translateToWooCommerce(p) {
 
   const formattedPrice = `$${lowestPrice.toFixed(2)}`;
 
-  // 2. Map Attributes (Color, Size)
+  // 2. Map Attributes
   const attributes = p.options.map(opt => ({
     name: opt.name,
     options: opt.values.map(val => val.title),
-    terms: opt.values.map(val => ({ name: val.title })) // Needed for UI mapping
+    terms: opt.values.map(val => ({ name: val.title }))
   }));
 
-  // 3. Map Variations (The specific combinations like "Red - Large")
+  // 3. Map Variations
   const variations = activeVariants.map(variant => {
     const varAttributes = variant.options.map(optId => {
       let attrName = "";
@@ -48,11 +59,10 @@ function translateToWooCommerce(p) {
       return { name: attrName, option: attrValue, value: attrValue };
     });
 
-    // Find the specific image for this variant
     const varImage = p.images.find(img => img.variant_ids.includes(variant.id));
 
     return {
-      id: variant.id, // CRUCIAL: This goes to PayPal and Printify later
+      id: variant.id,
       price: variant.price / 100,
       price_html: `$${(variant.price / 100).toFixed(2)}`,
       attributes: varAttributes,
@@ -60,15 +70,15 @@ function translateToWooCommerce(p) {
     };
   });
 
-  // 4. Map Categories from Printify Tags
-  const categories = p.tags.map((tag, index) => ({
-    id: index + 100,
-    name: tag,
-    slug: tag.toLowerCase().replace(/\s+/g, '-'),
-    parent: 0
-  }));
+  // 4. Map Categories (Ensure the product responds to both its Parent and Child slugs)
+  const pTags = p.tags.map(t => t.toLowerCase().trim());
+  let parents = pTags.filter(t => MAIN_CATEGORIES.includes(t));
+  if (parents.length === 0) parents = ['collection']; // Fallback if you forgot to tag it Men/Women
 
-  // 5. Return the exact structure the UI components expect
+  const categories = [];
+  pTags.forEach(tag => categories.push({ slug: tag.replace(/\s+/g, '-') }));
+  parents.forEach(parent => categories.push({ slug: parent.replace(/\s+/g, '-') }));
+
   return {
     id: p.id,
     name: p.title,
@@ -81,74 +91,97 @@ function translateToWooCommerce(p) {
     attributes: attributes,
     variations: variations,
     categories: categories,
-    raw_tags: p.tags
+    raw_tags: pTags
   };
 }
 
 // ----------------------------------------------------------------------------
-// API FETCH FUNCTIONS
+// THE REACT CACHED FETCH (Prevents Computer Freezing!)
 // ----------------------------------------------------------------------------
-
-export async function fetchAllProducts() {
-  if (!PRINTIFY_SHOP_ID || !PRINTIFY_TOKEN) {
-    console.error("CRITICAL: Missing Printify Environment Variables.");
-    return [];
-  }
+export const fetchAllProducts = cache(async () => {
+  if (!PRINTIFY_SHOP_ID || !PRINTIFY_TOKEN) return [];
 
   try {
-    // Revalidate every 60 seconds so price changes update quickly
+    // Next.js will cache this response for 60 seconds
     const res = await fetch(PRINTIFY_URL, { headers: HEADERS, next: { revalidate: 60 } });
     if (!res.ok) throw new Error(`Printify API Error: ${res.status}`);
     
     const data = await res.json();
     
-    // Pass the Printify array through our Translator
-    return data.data.map(translateToWooCommerce);
+    // STRICT FILTER: Only return products that are visible and have active variants!
+    const activeProducts = data.data.filter(p => p.visible !== false && p.variants.some(v => v.is_enabled));
+    
+    return activeProducts.map(translateToWooCommerce);
   } catch (error) {
     console.error("Error fetching from Printify:", error);
     return [];
   }
-}
+});
 
-// Used by product/[slug]/page.js
+// ----------------------------------------------------------------------------
+// HELPER FUNCTIONS (These now run instantly from memory, no extra API calls!)
+// ----------------------------------------------------------------------------
+
 export async function fetchProductBySlug(slug) {
   const products = await fetchAllProducts();
   return products.filter(p => p.slug === slug);
 }
 
-// Used by category/[slug]/page.js
 export async function fetchProductsByCategory(categorySlug) {
   const products = await fetchAllProducts();
   return products.filter(p => p.categories.some(c => c.slug === categorySlug));
 }
 
-// Used by Header, Footer, and CategoryGrid to build menus
+// ----------------------------------------------------------------------------
+// THE SMART CATEGORY BUILDER
+// ----------------------------------------------------------------------------
 export async function fetchAllCategories() {
   const products = await fetchAllProducts();
-  const uniqueTags = new Set();
   
-  products.forEach(p => {
-    p.raw_tags.forEach(tag => uniqueTags.add(tag));
-  });
-
-  const categories = [];
+  const parentsMap = new Map();
+  const subsMap = new Map();
   let idCounter = 1;
 
-  // We make a fake hierarchy so your dropdown menus still work perfectly
-  uniqueTags.forEach(tag => {
-    categories.push({
-      id: idCounter++,
-      name: tag,
-      slug: tag.toLowerCase().replace(/\s+/g, '-'),
-      parent: 0,
-      count: 1
+  products.forEach(p => {
+    const productParents = p.raw_tags.filter(t => MAIN_CATEGORIES.includes(t));
+    const productSubs = p.raw_tags.filter(t => !MAIN_CATEGORIES.includes(t));
+
+    if (productParents.length === 0) productParents.push('collection');
+
+    // Build the Parent -> Child Hierarchy automatically
+    productParents.forEach(parentName => {
+       if (!parentsMap.has(parentName)) {
+           parentsMap.set(parentName, { 
+             id: idCounter++, 
+             name: capitalize(parentName), 
+             slug: parentName, 
+             parent: 0, 
+             count: 0 
+           });
+       }
+       parentsMap.get(parentName).count++;
+
+       const parentId = parentsMap.get(parentName).id;
+
+       productSubs.forEach(subName => {
+          const subKey = `${parentId}-${subName}`;
+          if (!subsMap.has(subKey)) {
+              subsMap.set(subKey, { 
+                id: idCounter++, 
+                name: capitalize(subName), 
+                slug: subName.replace(/\s+/g, '-'), 
+                parent: parentId, 
+                count: 0 
+              });
+          }
+          subsMap.get(subKey).count++;
+       });
     });
   });
 
-  return categories;
+  return [...Array.from(parentsMap.values()), ...Array.from(subsMap.values())];
 }
 
-// Used by search/page.jsx
 export async function fetchSearchResults(query, limit = 20) {
   const products = await fetchAllProducts();
   const lowerQuery = query.toLowerCase();
