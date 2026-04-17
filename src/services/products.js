@@ -94,22 +94,24 @@ function translateToWooCommerce(p) {
 }
 
 // ----------------------------------------------------------------------------
-// THE API FETCH
+// THE API FETCH (WITH SAFE DEBUGGING)
 // ----------------------------------------------------------------------------
-export const fetchAllProducts = cache(async () => {
+export async function fetchAllProducts() {
+  // === SAFE DEBUG CLUES ===
+  console.log("--- VERCEL VAULT CHECK ---");
+  console.log("1. Shop ID seen by Vercel:", process.env.PRINTIFY_SHOP_ID);
+  console.log("2. Did Vercel find the Token?", !!process.env.PRINTIFY_API_TOKEN);
+  console.log("3. The exact URL being called:", PRINTIFY_URL);
+  console.log("--------------------------");
+
   if (!PRINTIFY_SHOP_ID || !PRINTIFY_TOKEN) {
-    console.error("Missing Printify Keys!");
+    console.error("Missing Printify Keys! Vercel's vault is empty.");
     return [];
   }
 
-  // LOGGING THE URL: This will tell us if PRINTIFY_SHOP_ID is undefined in Vercel
-  console.log("Attempting to fetch from:", PRINTIFY_URL);
-
   try {
     const res = await fetch(PRINTIFY_URL, { headers: HEADERS, cache: 'no-store' });
-    
     if (!res.ok) {
-       // Deep error logging
        const errText = await res.text();
        console.error(`Printify API Error details: Status ${res.status}, Message: ${errText}`);
        throw new Error(`Printify API Error: ${res.status}`);
@@ -120,10 +122,10 @@ export const fetchAllProducts = cache(async () => {
     
     return allProducts.map(translateToWooCommerce);
   } catch (error) {
-    console.error("Fetch function failed:", error);
+    console.error("Error fetching from Printify:", error);
     return [];
   }
-});
+}
 
 // ----------------------------------------------------------------------------
 // HELPER FUNCTIONS
