@@ -1,16 +1,15 @@
 import Link from 'next/link';
 import ProductInteractive from '@/components/product/ProductInteractive';
+import { fetchProductBySlug, fetchProductsByCategory } from '@/services/products'; // NEW ENGINE IMPORT
 
 export const dynamic = 'force-dynamic';
-export const revalidate = 0; 
 
 export default async function ProductPage({ params }) {
   const resolvedParams = await params;
   const slug = resolvedParams.slug;
 
-  // 1. Fetch the exact product
-  const res = await fetch(`https://backend.ethohaiti.com/wp-json/wc/store/v1/products?slug=${slug}`, { cache: 'no-store' });
-  const products = await res.json();
+  // 1. Fetch the exact product using Printify Engine
+  const products = await fetchProductBySlug(slug);
 
   if (!products || products.length === 0) {
     return (
@@ -30,32 +29,21 @@ export default async function ProductPage({ params }) {
   // ==========================================
   let similarProducts = [];
   if (product.categories && product.categories.length > 0) {
-    const currentCatId = product.categories[0].id;
+    // Grab the main category of this shirt
+    const targetCategorySlug = product.categories[0].slug;
 
-    // A. Fetch categories to figure out the hierarchy
-    const catRes = await fetch(`https://backend.ethohaiti.com/wp-json/wc/store/v1/products/categories?per_page=100`, { cache: 'no-store' });
-    const allCats = await catRes.json();
-
-    const currentCat = allCats.find(c => c.id === currentCatId);
+    // Fetch products from the same category
+    const simData = await fetchProductsByCategory(targetCategorySlug);
     
-    // B. If the product is in a subcategory (like T-Shirts), look up at the parent (Men's or Women's).
-    const targetCategoryId = (currentCat && currentCat.parent !== 0) ? currentCat.parent : currentCatId;
-
-    // C. Fetch 10 items from the MAIN category so we get a mix of different types of clothes (shirts, hoodies, etc.)
-    const simRes = await fetch(`https://backend.ethohaiti.com/wp-json/wc/store/v1/products?category=${targetCategoryId}&per_page=10`, { cache: 'no-store' });
-    
-    if (simRes.ok) {
-       const simData = await simRes.json();
-       if (Array.isArray(simData)) {
-          // D. Filter out the exact product we are currently looking at
-          const filtered = simData.filter(p => p.id !== product.id);
-          
-          // E. Math System: Randomly shuffle the array so it feels dynamic and fresh
-          const shuffled = filtered.sort(() => 0.5 - Math.random());
-          
-          // F. Pick the top 3
-          similarProducts = shuffled.slice(0, 3);
-       }
+    if (Array.isArray(simData) && simData.length > 0) {
+      // Filter out the exact product we are currently looking at
+      const filtered = simData.filter(p => p.id !== product.id);
+      
+      // Randomly shuffle so it feels dynamic and fresh
+      const shuffled = filtered.sort(() => 0.5 - Math.random());
+      
+      // Pick the top 3
+      similarProducts = shuffled.slice(0, 3);
     }
   }
 
@@ -68,8 +56,8 @@ export default async function ProductPage({ params }) {
           <span className="mx-2">/</span>
           {product.categories && product.categories.length > 0 && (
              <>
-               <Link href={`/category/${product.categories[0].slug}`} className="hover:text-haitiBlue transition-colors">
-                 {product.categories[0].name.replace(/&#8217;/g, "'")}
+               <Link href={`/category/${product.categories[0].slug}`} className="hover:text-haitiBlue transition-colors capitalize">
+                 {product.categories[0].slug.replace('-', ' ')}
                </Link>
                <span className="mx-2">/</span>
              </>

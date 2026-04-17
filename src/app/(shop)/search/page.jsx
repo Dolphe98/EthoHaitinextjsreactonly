@@ -3,14 +3,14 @@
 import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { fetchSearchResults } from '@/services/products';
+import { fetchSearchResults, fetchAllProducts } from '@/services/products'; // NEW ENGINE IMPORT
 
 function SearchContent() {
   const searchParams = useSearchParams();
   const query = searchParams.get('q') || '';
   
   const [products, setProducts] = useState([]);
-  const [suggestions, setSuggestions] = useState([]); // <-- MANAGER FIX: State for Fallback Items
+  const [suggestions, setSuggestions] = useState([]); 
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -27,14 +27,12 @@ function SearchContent() {
         
         if (results && results.length > 0) {
           setProducts(results);
-          setSuggestions([]); // Found exact matches, clear suggestions
+          setSuggestions([]); 
         } else {
           setProducts([]);
           
-          // --- MANAGER FIX: Fetch "Similar/Trending" Fallbacks ---
-          // Fetches some general products and shuffles them so they look fresh
-          const fallbackRes = await fetch("https://backend.ethohaiti.com/wp-json/wc/store/v1/products?per_page=12", { cache: 'no-store' });
-          const fallbackData = await fallbackRes.json();
+          // --- MANAGER FIX: Fetch Fallbacks from Printify ---
+          const fallbackData = await fetchAllProducts();
           if (Array.isArray(fallbackData)) {
             // Randomize and pick top 4 to show as suggestions
             const shuffled = fallbackData.sort(() => 0.5 - Math.random());
@@ -104,13 +102,12 @@ function SearchContent() {
                 ))}
               </div>
             ) : (
-              // --- MANAGER FIX: Enhanced Empty State with Suggestions ---
               <div className="text-center py-12">
                 <div className="bg-white rounded-lg shadow-sm p-12 mb-16">
                   <h2 className="text-2xl font-bold text-ethoDark mb-4">No exact matches found for '{query}'</h2>
                   <p className="text-gray-500 mb-8">Try checking your spelling or using a more general term. In the meantime, check out these trending items!</p>
                   <Link 
-                    href="/category/clothing" 
+                    href="/category/collection" 
                     className="bg-haitiBlue text-white px-8 py-3 rounded font-bold hover:bg-opacity-90 transition-colors inline-block"
                   >
                     Browse All Categories

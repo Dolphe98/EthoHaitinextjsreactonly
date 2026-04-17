@@ -2,26 +2,28 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { fetchAllCategories } from '@/services/products'; // NEW ENGINE IMPORT
 
 export default function Footer() {
   const [footerCategories, setFooterCategories] = useState([]);
 
   useEffect(() => {
-    fetch("https://backend.ethohaiti.com/wp-json/wc/store/v1/products/categories?per_page=100")
-      .then(res => res.json())
+    fetchAllCategories()
       .then(data => {
-        // --- THE FIX: Text Scrubber for the Footer ---
-        const cleanName = (name) => name.replace(/&#8217;/g, "'").replace(/&#8216;/g, "'").replace(/&amp;/g, "&").replace(/&#038;/g, "&");
+        const cleanName = (name) => {
+          if (!name) return "";
+          return name.replace(/&#8217;/g, "'").replace(/&#8216;/g, "'").replace(/&amp;/g, "&").replace(/&#038;/g, "&");
+        };
 
         const parents = data.filter(cat => cat.parent === 0 && cat.count > 0);
         const subcategories = data.filter(cat => cat.parent !== 0 && cat.count > 0);
         
         const hierarchy = parents.map(parent => ({
           ...parent,
-          name: cleanName(parent.name), // Scrubs the Parent name
+          name: cleanName(parent.name),
           children: subcategories.filter(sub => sub.parent === parent.id).map(sub => ({
             ...sub,
-            name: cleanName(sub.name) // Scrubs the Subcategory name
+            name: cleanName(sub.name)
           }))
         }));
         
