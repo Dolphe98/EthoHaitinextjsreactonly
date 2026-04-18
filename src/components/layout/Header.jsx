@@ -58,6 +58,7 @@ export default function Header() {
   const [navCategories, setNavCategories] = useState([]);
   const [isSearchDropdownOpen, setIsSearchDropdownOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchCategory, setSearchCategory] = useState("all"); // AMAZON SEARCH DROPDOWN STATE
   const router = useRouter();
 
   const desktopSearchRef = useRef(null);
@@ -114,6 +115,15 @@ export default function Header() {
 
   const handleSearch = (e) => {
     e.preventDefault();
+
+    // If they picked a category from the dropdown but didn't type anything, just go to the category!
+    if (!searchQuery.trim() && searchCategory !== "all") {
+      router.push(`/category/${searchCategory}`); 
+      setIsSearchDropdownOpen(false);
+      setIsMenuOpen(false);
+      return;
+    }
+
     if (!searchQuery.trim()) return;
 
     const lowerQuery = searchQuery.trim().toLowerCase();
@@ -219,6 +229,7 @@ export default function Header() {
       {/* DESKTOP HEADER */}
       <nav className="hidden md:flex flex-col w-full relative z-50">
         <div className="bg-gradient-to-r from-ethoDark via-slate-800 to-haitiBlue text-white px-4 py-2 flex items-center justify-between gap-4 border-b-[3px] border-haitiRed">
+          
           <Link href="/" className="flex-shrink-0 hover:opacity-80 transition-opacity">
             <div className="relative flex items-center justify-center p-2">
               <div className="absolute inset-0 bg-white opacity-80 rounded-[40%] blur-md"></div>
@@ -226,10 +237,47 @@ export default function Header() {
             </div>
           </Link>
 
-          <form ref={desktopSearchRef} onSubmit={handleSearch} className="flex-grow flex relative max-w-3xl ml-8">
-            <div className="flex w-full rounded-md overflow-hidden bg-white">
-              <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search EthoHaiti..." className="flex-grow px-4 py-2 text-black focus:outline-none" />
-              <button type="submit" className="bg-haitiRed hover:bg-red-700 text-white px-5 py-3 transition-colors h-full flex items-center justify-center">
+          {/* AMAZON STYLE DELIVER TO */}
+          <div className="flex flex-col text-white cursor-pointer hover:border-white border border-transparent p-1 rounded ml-2">
+            <span className="text-[11px] text-gray-300 leading-tight font-medium pl-4">Deliver to</span>
+            <div className="flex items-center gap-1 font-extrabold text-sm leading-tight">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" />
+              </svg>
+              {isMounted && isLoggedIn ? "Haiti" : "USA"}
+            </div>
+          </div>
+
+          {/* AMAZON STYLE SEARCH BAR */}
+          <form ref={desktopSearchRef} onSubmit={handleSearch} className="flex-grow flex relative max-w-4xl ml-4">
+            <div className="flex w-full rounded-md overflow-hidden bg-white focus-within:ring-2 focus-within:ring-haitiRed">
+              
+              {/* CATEGORY DROPDOWN */}
+              <select 
+                value={searchCategory}
+                onChange={(e) => setSearchCategory(e.target.value)}
+                className="bg-gray-100 border-r border-gray-300 text-black text-sm px-2 focus:outline-none cursor-pointer max-w-[120px] md:max-w-[160px] truncate"
+              >
+                <option value="all">All</option>
+                {navCategories.map(parent => (
+                  <optgroup key={parent.id} label={parent.name}>
+                    {parent.children.map(sub => (
+                      <option key={sub.id} value={sub.slug}>{sub.name}</option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+
+              <input 
+                type="text" 
+                value={searchQuery} 
+                onChange={(e) => setSearchQuery(e.target.value)} 
+                placeholder="Search EthoHaiti..." 
+                className="flex-grow px-4 py-2 text-black focus:outline-none" 
+              />
+              
+              <button type="submit" className="bg-haitiRed hover:bg-red-700 text-white px-5 transition-colors flex items-center justify-center">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" /></svg>
               </button>
             </div>
@@ -313,6 +361,7 @@ export default function Header() {
           </div>
         </div>
 
+        {/* MOBILE SEARCH */}
         <form ref={mobileSearchRef} onSubmit={handleSearch} className="px-3 pb-3 relative">
           <div className="flex items-center rounded overflow-hidden bg-white shadow-inner">
             <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search EthoHaiti..." className="flex-grow px-3 py-2 text-black focus:outline-none" />
@@ -321,6 +370,15 @@ export default function Header() {
             </button>
           </div>
         </form>
+        
+        {/* MOBILE DELIVER TO BAR (Amazon Style) */}
+        <div className="bg-slate-800 text-white px-4 py-2 flex items-center gap-2 text-sm font-medium border-t border-slate-700">
+           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
+             <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+             <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" />
+           </svg>
+           <span>Deliver to {isMounted && isLoggedIn ? "Haiti" : "USA"}</span>
+        </div>
 
         <div className="bg-ethoDark text-white text-sm px-3 py-2 flex items-center gap-5 overflow-x-auto whitespace-nowrap no-scrollbar border-t border-gray-700">
           {navCategories.map(parent => (
