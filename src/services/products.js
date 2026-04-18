@@ -1,33 +1,37 @@
 "use server";
 
-import { cache } from 'react';
-
 // ============================================================================
-// THE PRINTIFY ENGINE (Pure URL Fix)
+// THE PRINTIFY ENGINE v5.0 (The Zipper & Unique Slug Generator)
 // ============================================================================
 
 const PRINTIFY_SHOP_ID = process.env.PRINTIFY_SHOP_ID;
 const PRINTIFY_TOKEN = process.env.PRINTIFY_API_TOKEN;
 
-// REMOVED query parameters. Purest endpoint possible.
-const PRINTIFY_URL = `https://api.printify.com/v1/shops/${PRINTIFY_SHOP_ID}/products.json`;
+const PRINTIFY_URL = `https://api.printify.com/v1/shops/${PRINTIFY_SHOP_ID}/products.json?limit=99`;
 
 const HEADERS = {
   'Authorization': `Bearer ${PRINTIFY_TOKEN}`,
   'Content-Type': 'application/json'
 };
 
-const MAIN_CATEGORIES = ['men', 'women', 'unisex', 'kids', 'accessories', 'home', 'collection'];
+// ADDED EXACT CATEGORIES FROM YOUR LIST
+const MAIN_CATEGORIES = [
+  "men's clothing", "women's clothing", "men", "women", "unisex", "kids", "accessories", "home", "collection"
+];
+
+// Helper to make slugs clean (e.g. "Men's Clothing" -> "mens-clothing")
+const slugify = (text) => (text || '').toLowerCase().replace(/['"]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
 
 function capitalize(str) {
-  return str && typeof str === 'string' ? str.charAt(0).toUpperCase() + str.slice(1) : '';
+  if (!str) return '';
+  return str.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
 }
 
 // ----------------------------------------------------------------------------
 // THE TRANSLATOR
 // ----------------------------------------------------------------------------
 function translateToWooCommerce(p) {
-  const activeVariants = p.variants ? p.variants.filter(v => v.is_enabled) : [];
+  const activeVariants = p.variants || [];
   const lowestPrice = activeVariants.length > 0 
     ? Math.min(...activeVariants.map(v => v.price)) / 100 
     : 0;
@@ -65,24 +69,46 @@ function translateToWooCommerce(p) {
     };
   });
 
-  const pTags = (p.tags || []).map(t => typeof t === 'string' ? t.toLowerCase().trim() : '');
+  // SNIPER: Extract Categories from Description
+  let rawDesc = p.description || "";
+  let pTags = [];
+
+  const catRegex = /Categories:\s*([^<\n]+)/i; 
+  const match = rawDesc.match(catRegex);
+
+  if (match && match[1]) {
+      pTags = match[1].split(',').map(s => s.trim().toLowerCase());
+      rawDesc = rawDesc.replace(/<p>[^<]*Categories:\s*[^<]*<\/p>/i, ''); 
+      rawDesc = rawDesc.replace(/Categories:\s*([^<\n]+)/i, ''); 
+  } else {
+      pTags = (p.tags || []).map(t => typeof t === 'string' ? t.toLowerCase().trim() : '');
+  }
+
+  // Find Parents
   let parents = pTags.filter(t => MAIN_CATEGORIES.includes(t));
   if (parents.length === 0) parents = ['collection']; 
 
   const categories = [];
+  const parentSlugs = parents.map(p => slugify(p));
+  
+  // Add Base Parent Slugs
+  parentSlugs.forEach(ps => categories.push({ slug: ps }));
+  
+  // Add Base Tags and COMPOUNDED SLUGS (This keeps Men and Women separate!)
   pTags.forEach(tag => {
-      if(tag) categories.push({ slug: tag.replace(/\s+/g, '-') });
-  });
-  parents.forEach(parent => {
-      if(parent) categories.push({ slug: parent.replace(/\s+/g, '-') });
+      if(tag && !MAIN_CATEGORIES.includes(tag)) {
+          const subSlug = slugify(tag);
+          categories.push({ slug: subSlug });
+          parentSlugs.forEach(ps => categories.push({ slug: `${ps}-${subSlug}` }));
+      }
   });
 
   return {
     id: p.id,
     name: p.title || "Unnamed Product",
     slug: p.title ? p.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '') : `product-${p.id}`,
-    description: p.description || "",
-    short_description: p.description ? p.description.substring(0, 150) + "..." : "",
+    description: rawDesc.trim(), 
+    short_description: rawDesc ? rawDesc.replace(/<[^>]*>?/gm, '').substring(0, 150) + "..." : "",
     price: lowestPrice,
     price_html: formattedPrice,
     images: (p.images || []).map(img => ({ src: img.src })),
@@ -94,35 +120,22 @@ function translateToWooCommerce(p) {
 }
 
 // ----------------------------------------------------------------------------
-// THE API FETCH (WITH SAFE DEBUGGING)
+// THE API FETCH
 // ----------------------------------------------------------------------------
 export async function fetchAllProducts() {
-  // === SAFE DEBUG CLUES ===
-  console.log("--- VERCEL VAULT CHECK ---");
-  console.log("1. Shop ID seen by Vercel:", process.env.PRINTIFY_SHOP_ID);
-  console.log("2. Did Vercel find the Token?", !!process.env.PRINTIFY_API_TOKEN);
-  console.log("3. The exact URL being called:", PRINTIFY_URL);
-  console.log("--------------------------");
-
-  if (!PRINTIFY_SHOP_ID || !PRINTIFY_TOKEN) {
-    console.error("Missing Printify Keys! Vercel's vault is empty.");
-    return [];
-  }
+  if (!PRINTIFY_SHOP_ID || !PRINTIFY_TOKEN) return [];
 
   try {
     const res = await fetch(PRINTIFY_URL, { headers: HEADERS, cache: 'no-store' });
-    if (!res.ok) {
-       const errText = await res.text();
-       console.error(`Printify API Error details: Status ${res.status}, Message: ${errText}`);
-       throw new Error(`Printify API Error: ${res.status}`);
-    }
+    if (!res.ok) throw new Error(`Printify API Error`);
     
     const data = await res.json();
     const allProducts = data.data || [];
     
-    return allProducts.map(translateToWooCommerce);
+    // Only return items with active variations to keep it clean
+    const activeProducts = allProducts.filter(p => p.variants && p.variants.some(v => v.is_enabled));
+    return activeProducts.map(translateToWooCommerce);
   } catch (error) {
-    console.error("Error fetching from Printify:", error);
     return [];
   }
 }
@@ -158,11 +171,13 @@ export async function fetchAllCategories() {
     if (productParents.length === 0) productParents.push('collection');
 
     productParents.forEach(parentName => {
+       const parentSlug = slugify(parentName);
+       
        if (!parentsMap.has(parentName)) {
            parentsMap.set(parentName, { 
              id: idCounter++, 
              name: capitalize(parentName), 
-             slug: parentName, 
+             slug: parentSlug, 
              parent: 0, 
              count: 0 
            });
@@ -172,12 +187,14 @@ export async function fetchAllCategories() {
        const parentId = parentsMap.get(parentName).id;
 
        productSubs.forEach(subName => {
+          const subSlug = slugify(subName);
           const subKey = `${parentId}-${subName}`;
+          
           if (!subsMap.has(subKey)) {
               subsMap.set(subKey, { 
                 id: idCounter++, 
                 name: capitalize(subName), 
-                slug: subName.replace(/\s+/g, '-'), 
+                slug: `${parentSlug}-${subSlug}`, // UNIQUE COMPOUND SLUG!
                 parent: parentId, 
                 count: 0 
               });

@@ -2,43 +2,71 @@ import Link from 'next/link';
 import { fetchAllCategories, fetchProductsByCategory } from '@/services/products';
 
 export default async function AlternatingCategoryGrid() {
-  // 1. Fetch categories instantly on the server
-  const data = await fetchAllCategories();
+  const allCategories = await fetchAllCategories();
 
-  const cleanName = (name) => {
-    if (!name) return "";
-    return name.replace(/&#8217;/g, "'").replace(/&#8216;/g, "'").replace(/&amp;/g, "&").replace(/&#038;/g, "&");
-  };
+  // 1. Locate the exact Parent Categories
+  const mensParent = allCategories.find(c => c.slug === 'mens-clothing');
+  const womensParent = allCategories.find(c => c.slug === 'womens-clothing');
 
-  // 2. Map the data directly in memory (No browser locking!)
+  // 2. Extract their specific subcategories
+  const mensSubs = mensParent ? allCategories.filter(c => c.parent === mensParent.id) : [];
+  const womensSubs = womensParent ? allCategories.filter(c => c.parent === womensParent.id) : [];
+
+  // 3. The Zipper Logic
+  const zippedCategories = [];
+  const maxLength = Math.max(mensSubs.length, womensSubs.length);
+  
+  for (let i = 0; i < maxLength; i++) {
+    if (mensSubs[i]) {
+      zippedCategories.push({ 
+        ...mensSubs[i], 
+        displayName: `Men's ${mensSubs[i].name}`, 
+        genderTag: "Men's Collection" 
+      });
+    }
+    if (womensSubs[i]) {
+      zippedCategories.push({ 
+        ...womensSubs[i], 
+        displayName: `Women's ${womensSubs[i].name}`, 
+        genderTag: "Women's Collection" 
+      });
+    }
+  }
+
+  // 4. Fetch cover images for the Zipped items
   const categoriesWithImages = await Promise.all(
-    data.map(async (category) => {
+    zippedCategories.map(async (category) => {
       try {
         const products = await fetchProductsByCategory(category.slug);
-        const product = products[0]; // Grab the first product to use as the cover image
+        if (!products || products.length === 0) return null;
+
+        const product = products[0]; // Use the first product as the cover
 
         return {
           ...category,
-          name: cleanName(category.name),
-          genderTag: "Collection",
           img1: product?.images?.[0]?.src || null,
           img2: product?.images?.[1]?.src || product?.images?.[0]?.src || null
         };
       } catch (err) {
-        return { ...category, img1: null, img2: null };
+        return null;
       }
     })
   );
 
-  // 3. Only show categories that have a valid cover image
-  const validCategories = categoriesWithImages.filter(cat => cat.img1 !== null);
+  // 5. Filter out empty/failed categories
+  const validCategories = categoriesWithImages.filter(cat => cat !== null && cat.img1 !== null);
 
-  if (validCategories.length === 0) return null;
+  if (validCategories.length === 0) {
+     return (
+       <div className="text-center py-20 text-gray-500 font-bold">
+         Curating collections...
+       </div>
+     );
+  }
 
   return (
     <section className="px-4 sm:px-6 lg:px-8 max-w-screen-2xl mx-auto mb-12">
       
-      {/* Injecting the animation locally so it works globally */}
       <style dangerouslySetInnerHTML={{__html: `
         @keyframes autoCrossfade {
           0% { opacity: 1; } 40% { opacity: 1; }
@@ -64,7 +92,9 @@ export default async function AlternatingCategoryGrid() {
               </span>
             </div>
             <div className="p-4 flex flex-col flex-grow text-center bg-white z-10">
-              <h3 className="text-xl font-extrabold text-gray-900 group-hover:text-haitiBlue transition-colors">{category.name}</h3>
+              <h3 className="text-xl font-extrabold text-gray-900 group-hover:text-haitiBlue transition-colors">
+                {category.displayName}
+              </h3>
               <p className="text-sm text-haitiBlue font-bold mt-2">Shop Now &rarr;</p>
             </div>
           </Link>
