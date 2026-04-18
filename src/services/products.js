@@ -3,7 +3,7 @@
 import { cache } from 'react';
 
 // ============================================================================
-// THE PRINTIFY ENGINE v6.0 (Unlocked & Unchained)
+// THE PRINTIFY ENGINE v7.0 (The Log Tapper)
 // ============================================================================
 
 const PRINTIFY_SHOP_ID = process.env.PRINTIFY_SHOP_ID;
@@ -130,21 +130,35 @@ function translateToWooCommerce(p) {
 }
 
 export async function fetchAllProducts() {
-  if (!PRINTIFY_SHOP_ID || !PRINTIFY_TOKEN) return [];
+  console.log("=== VERCEL LOG TAPPER START ===");
+  console.log("1. Shop ID:", PRINTIFY_SHOP_ID);
+  console.log("2. Token exists?", !!PRINTIFY_TOKEN);
+
+  if (!PRINTIFY_SHOP_ID || !PRINTIFY_TOKEN) {
+    console.error("Missing Keys in Vercel Vault!");
+    return [];
+  }
 
   try {
     const res = await fetch(PRINTIFY_URL, { headers: HEADERS, cache: 'no-store' });
-    if (!res.ok) throw new Error(`Printify API Error`);
+    console.log("3. Printify API Status Code:", res.status);
+
+    if (!res.ok) {
+       const errText = await res.text();
+       console.error("4. PRINTIFY REJECTED US:", errText);
+       throw new Error(`Printify API Error`);
+    }
     
     const data = await res.json();
     const allProducts = data.data || [];
     
-    // MANAGER FIX: REMOVED is_enabled COMPLETELY. 
-    // Even if Printify says it is "Unpublished", we WILL grab it!
-    const activeProducts = allProducts.filter(p => p.variants && p.variants.length > 0);
-    
-    return activeProducts.map(translateToWooCommerce);
+    console.log("4. Total Products sent by Printify:", allProducts.length);
+    console.log("=== VERCEL LOG TAPPER END ===");
+
+    // Absolutely no filters. Take whatever Printify gives us.
+    return allProducts.map(translateToWooCommerce);
   } catch (error) {
+    console.error("Fetch failed:", error);
     return [];
   }
 }
@@ -196,7 +210,7 @@ export async function fetchAllCategories() {
               subsMap.set(subKey, { 
                 id: idCounter++, 
                 name: capitalize(subName), 
-                slug: `${parentSlug}-${subSlug}`, // UNIQUE COMPOUND SLUG!
+                slug: `${parentSlug}-${subSlug}`,
                 parent: parentId, 
                 count: 0 
               });
