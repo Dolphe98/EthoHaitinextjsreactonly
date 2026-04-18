@@ -3,7 +3,7 @@
 import { cache } from 'react';
 
 // ============================================================================
-// THE PRINTIFY ENGINE v5.0 (Bulletproof Apostrophes & Unique Slugs)
+// THE PRINTIFY ENGINE v6.0 (Unlocked & Unchained)
 // ============================================================================
 
 const PRINTIFY_SHOP_ID = process.env.PRINTIFY_SHOP_ID;
@@ -15,18 +15,16 @@ const HEADERS = {
   'Content-Type': 'application/json'
 };
 
-// THE STRICT DICTIONARY
 const MAIN_CATEGORIES = [
   "men's clothing", "women's clothing", "accessories", "collection"
 ];
 
-// Helper to make URLs clean (e.g. "Men's Clothing" -> "mens-clothing")
 const slugify = (text) => {
   if (!text) return '';
   return text.toLowerCase()
-    .replace(/&#8217;|&#39;|['"]/g, '') // Remove apostrophes entirely first
-    .replace(/[^a-z0-9]+/g, '-')       // Turn spaces/symbols into dashes
-    .replace(/(^-|-$)+/g, '');         // Trim dashes from ends
+    .replace(/&#8217;|&#39;|['"]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)+/g, '');
 };
 
 function capitalize(str) {
@@ -34,7 +32,6 @@ function capitalize(str) {
   return str.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
 }
 
-// Helper to fix weird apostrophes from Printify's text editor
 function decodeHtml(html) {
   if (!html) return "";
   return html
@@ -45,9 +42,6 @@ function decodeHtml(html) {
     .replace(/&#038;/g, "&");
 }
 
-// ----------------------------------------------------------------------------
-// THE TRANSLATOR
-// ----------------------------------------------------------------------------
 function translateToWooCommerce(p) {
   const activeVariants = p.variants || [];
   const lowestPrice = activeVariants.length > 0 
@@ -87,9 +81,6 @@ function translateToWooCommerce(p) {
     };
   });
 
-  // ==========================================================================
-  // THE SNIPER v2: Bulletproof Apostrophe & HTML handling
-  // ==========================================================================
   let rawDesc = p.description || "";
   let decodedDesc = decodeHtml(rawDesc);
   let pTags = [];
@@ -98,15 +89,11 @@ function translateToWooCommerce(p) {
   const match = decodedDesc.match(catRegex);
 
   if (match && match[1]) {
-      // 1. Extract the categories
       pTags = match[1].split(',').map(s => s.trim().toLowerCase());
-      
-      // 2. SNIPER: Delete the secret text from the description!
       rawDesc = rawDesc.replace(/<p>[^<]*Categories:\s*[^<]*<\/p>/gi, ''); 
       rawDesc = rawDesc.replace(/Categories:\s*([^<\n]+)/gi, ''); 
   }
 
-  // Build the Parent/Child relationship
   let parents = pTags.filter(t => MAIN_CATEGORIES.includes(t));
   if (parents.length === 0) {
     parents = ['collection']; 
@@ -116,10 +103,8 @@ function translateToWooCommerce(p) {
   const categories = [];
   const parentSlugs = parents.map(p => slugify(p));
   
-  // Add Base Parent Slugs
   parentSlugs.forEach(ps => categories.push({ slug: ps }));
   
-  // Add COMPOUNDED SLUGS (This keeps Men and Women separate!)
   pTags.forEach(tag => {
       if(tag && !MAIN_CATEGORIES.includes(tag)) {
           const subSlug = slugify(tag);
@@ -154,8 +139,10 @@ export async function fetchAllProducts() {
     const data = await res.json();
     const allProducts = data.data || [];
     
-    // MANAGER FIX: We removed the 'is_enabled' check so unpublished Printify products still show up!
+    // MANAGER FIX: REMOVED is_enabled COMPLETELY. 
+    // Even if Printify says it is "Unpublished", we WILL grab it!
     const activeProducts = allProducts.filter(p => p.variants && p.variants.length > 0);
+    
     return activeProducts.map(translateToWooCommerce);
   } catch (error) {
     return [];
