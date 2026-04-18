@@ -1,14 +1,11 @@
 "use server";
 
-import { cache } from 'react';
-
 // ============================================================================
-// THE PRINTIFY ENGINE v7.0 (The Log Tapper)
+// THE PRINTIFY ENGINE v8.0 (The Pagination Fix)
 // ============================================================================
 
 const PRINTIFY_SHOP_ID = process.env.PRINTIFY_SHOP_ID;
 const PRINTIFY_TOKEN = process.env.PRINTIFY_API_TOKEN;
-const PRINTIFY_URL = `https://api.printify.com/v1/shops/${PRINTIFY_SHOP_ID}/products.json?limit=99`;
 
 const HEADERS = {
   'Authorization': `Bearer ${PRINTIFY_TOKEN}`,
@@ -130,33 +127,34 @@ function translateToWooCommerce(p) {
 }
 
 export async function fetchAllProducts() {
-  console.log("=== VERCEL LOG TAPPER START ===");
-  console.log("1. Shop ID:", PRINTIFY_SHOP_ID);
-  console.log("2. Token exists?", !!PRINTIFY_TOKEN);
-
-  if (!PRINTIFY_SHOP_ID || !PRINTIFY_TOKEN) {
-    console.error("Missing Keys in Vercel Vault!");
-    return [];
-  }
+  if (!PRINTIFY_SHOP_ID || !PRINTIFY_TOKEN) return [];
 
   try {
-    const res = await fetch(PRINTIFY_URL, { headers: HEADERS, cache: 'no-store' });
-    console.log("3. Printify API Status Code:", res.status);
+    let allProducts = [];
+    let currentPage = 1;
+    let lastPage = 1;
 
-    if (!res.ok) {
-       const errText = await res.text();
-       console.error("4. PRINTIFY REJECTED US:", errText);
-       throw new Error(`Printify API Error`);
-    }
+    // THE FIX: Fetch 50 items at a time, looping until we hit the last page!
+    do {
+      const url = `https://api.printify.com/v1/shops/${PRINTIFY_SHOP_ID}/products.json?limit=50&page=${currentPage}`;
+      const res = await fetch(url, { headers: HEADERS, cache: 'no-store' });
+      
+      if (!res.ok) throw new Error(`Printify API Error: ${res.status}`);
+      
+      const data = await res.json();
+      const pageProducts = data.data || [];
+      
+      // Glue the new products to our master list
+      allProducts = [...allProducts, ...pageProducts];
+      
+      lastPage = data.last_page || 1;
+      currentPage++;
+    } while (currentPage <= lastPage);
     
-    const data = await res.json();
-    const allProducts = data.data || [];
+    // We filter for active variants to keep the store clean, ignoring Printify's unpublished glitch
+    const activeProducts = allProducts.filter(p => p.variants && p.variants.length > 0);
+    return activeProducts.map(translateToWooCommerce);
     
-    console.log("4. Total Products sent by Printify:", allProducts.length);
-    console.log("=== VERCEL LOG TAPPER END ===");
-
-    // Absolutely no filters. Take whatever Printify gives us.
-    return allProducts.map(translateToWooCommerce);
   } catch (error) {
     console.error("Fetch failed:", error);
     return [];
