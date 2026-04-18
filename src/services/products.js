@@ -154,8 +154,8 @@ export async function fetchAllProducts() {
     const data = await res.json();
     const allProducts = data.data || [];
     
-    // Only return items with active variations
-    const activeProducts = allProducts.filter(p => p.variants && p.variants.some(v => v.is_enabled));
+    // MANAGER FIX: We removed the 'is_enabled' check so unpublished Printify products still show up!
+    const activeProducts = allProducts.filter(p => p.variants && p.variants.length > 0);
     return activeProducts.map(translateToWooCommerce);
   } catch (error) {
     return [];

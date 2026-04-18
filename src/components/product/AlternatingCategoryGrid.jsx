@@ -55,17 +55,49 @@ export default async function AlternatingCategoryGrid() {
     })
   );
 
-  // 5. Filter out empty/failed categories (the ones that returned 'null' above)
+  // 5. Filter out empty/failed categories
   const validCategories = categoriesWithImages.filter(cat => cat !== null && cat.img1 !== null);
 
+  // =====================================================================
+  // MANAGER FIX: THE DIAGNOSTIC X-RAY
+  // If the grid is empty, print out EXACTLY what the server sees.
+  // =====================================================================
   if (validCategories.length === 0) {
      return (
-       <div className="text-center py-20 text-gray-500 font-bold">
-         Curating collections...
+       <div className="max-w-4xl mx-auto my-12 bg-red-50 p-8 rounded-lg border-2 border-red-200 shadow-sm text-left">
+         <h2 className="text-2xl font-black text-red-700 mb-6 uppercase tracking-wider">X-Ray Diagnostic Mode</h2>
+         
+         <div className="space-y-3 text-lg text-gray-800">
+           <p><strong className="text-black">1. Total Categories Engine Built:</strong> {allCategories.length}</p>
+           
+           <p><strong className="text-black">2. Found "Men's Clothing" Parent?</strong> 
+             {mensParent ? <span className="text-green-600 font-bold ml-2">YES</span> : <span className="text-red-600 font-bold ml-2">NO</span>}
+           </p>
+           
+           <p><strong className="text-black">3. Found "Women's Clothing" Parent?</strong> 
+             {womensParent ? <span className="text-green-600 font-bold ml-2">YES</span> : <span className="text-red-600 font-bold ml-2">NO</span>}
+           </p>
+           
+           <div className="bg-white p-4 border border-gray-200 rounded mt-4">
+              <p className="font-bold text-black mb-2">Men's Subcategories Detected:</p>
+              <p className="text-gray-600 text-sm">{mensSubs.map(s => s.name).join(', ') || 'None found'}</p>
+           </div>
+
+           <div className="bg-white p-4 border border-gray-200 rounded mt-4">
+              <p className="font-bold text-black mb-2">Women's Subcategories Detected:</p>
+              <p className="text-gray-600 text-sm">{womensSubs.map(s => s.name).join(', ') || 'None found'}</p>
+           </div>
+         </div>
+
+         <p className="mt-8 text-sm text-gray-500 italic">
+           *If YES appears but Subcategories say "None found", the description text isn't formatting right. <br/>
+           *If Subcategories ARE found, but this X-Ray is still showing, it means the API is returning 0 products for those subcategories (likely due to Printify locks).
+         </p>
        </div>
      );
   }
 
+  // If products exist, render the normal grid!
   return (
     <section className="px-4 sm:px-6 lg:px-8 max-w-screen-2xl mx-auto mb-12">
       
