@@ -1,12 +1,13 @@
 "use server";
 
+import { cache } from 'react';
+
 // ============================================================================
-// THE PRINTIFY ENGINE v5.0 (The Zipper & Unique Slug Generator)
+// THE PRINTIFY ENGINE v5.0 (Bulletproof Apostrophes & Unique Slugs)
 // ============================================================================
 
 const PRINTIFY_SHOP_ID = process.env.PRINTIFY_SHOP_ID;
 const PRINTIFY_TOKEN = process.env.PRINTIFY_API_TOKEN;
-
 const PRINTIFY_URL = `https://api.printify.com/v1/shops/${PRINTIFY_SHOP_ID}/products.json?limit=99`;
 
 const HEADERS = {
@@ -14,17 +15,34 @@ const HEADERS = {
   'Content-Type': 'application/json'
 };
 
-// ADDED EXACT CATEGORIES FROM YOUR LIST
+// THE STRICT DICTIONARY
 const MAIN_CATEGORIES = [
-  "men's clothing", "women's clothing", "men", "women", "unisex", "kids", "accessories", "home", "collection"
+  "men's clothing", "women's clothing", "accessories", "collection"
 ];
 
-// Helper to make slugs clean (e.g. "Men's Clothing" -> "mens-clothing")
-const slugify = (text) => (text || '').toLowerCase().replace(/['"]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
+// Helper to make URLs clean (e.g. "Men's Clothing" -> "mens-clothing")
+const slugify = (text) => {
+  if (!text) return '';
+  return text.toLowerCase()
+    .replace(/&#8217;|&#39;|['"]/g, '') // Remove apostrophes entirely first
+    .replace(/[^a-z0-9]+/g, '-')       // Turn spaces/symbols into dashes
+    .replace(/(^-|-$)+/g, '');         // Trim dashes from ends
+};
 
 function capitalize(str) {
   if (!str) return '';
   return str.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+}
+
+// Helper to fix weird apostrophes from Printify's text editor
+function decodeHtml(html) {
+  if (!html) return "";
+  return html
+    .replace(/&#39;/g, "'")
+    .replace(/&#8217;/g, "'")
+    .replace(/&#8216;/g, "'")
+    .replace(/&amp;/g, "&")
+    .replace(/&#038;/g, "&");
 }
 
 // ----------------------------------------------------------------------------
@@ -69,24 +87,31 @@ function translateToWooCommerce(p) {
     };
   });
 
-  // SNIPER: Extract Categories from Description
+  // ==========================================================================
+  // THE SNIPER v2: Bulletproof Apostrophe & HTML handling
+  // ==========================================================================
   let rawDesc = p.description || "";
+  let decodedDesc = decodeHtml(rawDesc);
   let pTags = [];
 
   const catRegex = /Categories:\s*([^<\n]+)/i; 
-  const match = rawDesc.match(catRegex);
+  const match = decodedDesc.match(catRegex);
 
   if (match && match[1]) {
+      // 1. Extract the categories
       pTags = match[1].split(',').map(s => s.trim().toLowerCase());
-      rawDesc = rawDesc.replace(/<p>[^<]*Categories:\s*[^<]*<\/p>/i, ''); 
-      rawDesc = rawDesc.replace(/Categories:\s*([^<\n]+)/i, ''); 
-  } else {
-      pTags = (p.tags || []).map(t => typeof t === 'string' ? t.toLowerCase().trim() : '');
+      
+      // 2. SNIPER: Delete the secret text from the description!
+      rawDesc = rawDesc.replace(/<p>[^<]*Categories:\s*[^<]*<\/p>/gi, ''); 
+      rawDesc = rawDesc.replace(/Categories:\s*([^<\n]+)/gi, ''); 
   }
 
-  // Find Parents
+  // Build the Parent/Child relationship
   let parents = pTags.filter(t => MAIN_CATEGORIES.includes(t));
-  if (parents.length === 0) parents = ['collection']; 
+  if (parents.length === 0) {
+    parents = ['collection']; 
+    pTags.push('collection'); 
+  }
 
   const categories = [];
   const parentSlugs = parents.map(p => slugify(p));
@@ -94,7 +119,7 @@ function translateToWooCommerce(p) {
   // Add Base Parent Slugs
   parentSlugs.forEach(ps => categories.push({ slug: ps }));
   
-  // Add Base Tags and COMPOUNDED SLUGS (This keeps Men and Women separate!)
+  // Add COMPOUNDED SLUGS (This keeps Men and Women separate!)
   pTags.forEach(tag => {
       if(tag && !MAIN_CATEGORIES.includes(tag)) {
           const subSlug = slugify(tag);
@@ -105,8 +130,8 @@ function translateToWooCommerce(p) {
 
   return {
     id: p.id,
-    name: p.title || "Unnamed Product",
-    slug: p.title ? p.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '') : `product-${p.id}`,
+    name: decodeHtml(p.title) || "Unnamed Product",
+    slug: p.title ? slugify(p.title) : `product-${p.id}`,
     description: rawDesc.trim(), 
     short_description: rawDesc ? rawDesc.replace(/<[^>]*>?/gm, '').substring(0, 150) + "..." : "",
     price: lowestPrice,
@@ -119,9 +144,6 @@ function translateToWooCommerce(p) {
   };
 }
 
-// ----------------------------------------------------------------------------
-// THE API FETCH
-// ----------------------------------------------------------------------------
 export async function fetchAllProducts() {
   if (!PRINTIFY_SHOP_ID || !PRINTIFY_TOKEN) return [];
 
@@ -132,17 +154,13 @@ export async function fetchAllProducts() {
     const data = await res.json();
     const allProducts = data.data || [];
     
-    // Only return items with active variations to keep it clean
+    // Only return items with active variations
     const activeProducts = allProducts.filter(p => p.variants && p.variants.some(v => v.is_enabled));
     return activeProducts.map(translateToWooCommerce);
   } catch (error) {
     return [];
   }
 }
-
-// ----------------------------------------------------------------------------
-// HELPER FUNCTIONS
-// ----------------------------------------------------------------------------
 
 export async function fetchProductBySlug(slug) {
   const products = await fetchAllProducts();
@@ -154,9 +172,6 @@ export async function fetchProductsByCategory(categorySlug) {
   return products.filter(p => p.categories.some(c => c.slug === categorySlug));
 }
 
-// ----------------------------------------------------------------------------
-// THE SMART CATEGORY BUILDER
-// ----------------------------------------------------------------------------
 export async function fetchAllCategories() {
   const products = await fetchAllProducts();
   
@@ -168,9 +183,9 @@ export async function fetchAllCategories() {
     const productParents = p.raw_tags.filter(t => MAIN_CATEGORIES.includes(t));
     const productSubs = p.raw_tags.filter(t => !MAIN_CATEGORIES.includes(t));
 
-    if (productParents.length === 0) productParents.push('collection');
+    let currentParents = productParents.length > 0 ? productParents : ['collection'];
 
-    productParents.forEach(parentName => {
+    currentParents.forEach(parentName => {
        const parentSlug = slugify(parentName);
        
        if (!parentsMap.has(parentName)) {

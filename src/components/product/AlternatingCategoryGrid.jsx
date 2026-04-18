@@ -4,9 +4,9 @@ import { fetchAllCategories, fetchProductsByCategory } from '@/services/products
 export default async function AlternatingCategoryGrid() {
   const allCategories = await fetchAllCategories();
 
-  // 1. Locate the exact Parent Categories
-  const mensParent = allCategories.find(c => c.slug === 'mens-clothing');
-  const womensParent = allCategories.find(c => c.slug === 'womens-clothing');
+  // 1. Locate the exact Parent Categories based on our clean slugs
+  const mensParent = allCategories.find(c => c.slug === 'mens-clothing' || c.slug === 'mens');
+  const womensParent = allCategories.find(c => c.slug === 'womens-clothing' || c.slug === 'womens');
 
   // 2. Extract their specific subcategories
   const mensSubs = mensParent ? allCategories.filter(c => c.parent === mensParent.id) : [];
@@ -38,6 +38,8 @@ export default async function AlternatingCategoryGrid() {
     zippedCategories.map(async (category) => {
       try {
         const products = await fetchProductsByCategory(category.slug);
+        
+        // If there are no products in this subcategory yet, skip it!
         if (!products || products.length === 0) return null;
 
         const product = products[0]; // Use the first product as the cover
@@ -53,7 +55,7 @@ export default async function AlternatingCategoryGrid() {
     })
   );
 
-  // 5. Filter out empty/failed categories
+  // 5. Filter out empty/failed categories (the ones that returned 'null' above)
   const validCategories = categoriesWithImages.filter(cat => cat !== null && cat.img1 !== null);
 
   if (validCategories.length === 0) {
