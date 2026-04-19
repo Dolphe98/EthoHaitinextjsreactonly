@@ -11,7 +11,7 @@ export default function CheckoutPage() {
   const { cart, clearCart } = useCartStore();
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
-  const [paymentSuccess, setPaymentSuccess] = useState(false);
+  const [paymentSuccess, setPaymentSuccess] = useState(null); // Will hold the Order ID
 
   useEffect(() => {
     setMounted(true);
@@ -25,6 +25,18 @@ export default function CheckoutPage() {
   // Optional: Add flat shipping or tax logic here
   const shipping = 5.00; 
   const total = subtotal + shipping;
+
+  // THE GOAFFPRO CONVERSION TRIGGER
+  useEffect(() => {
+    if (paymentSuccess && typeof window !== 'undefined' && window.goaffproTrackConversion) {
+      // If payment is successful, tell GoAffPro to record the sale!
+      window.goaffproTrackConversion({
+        id: paymentSuccess, // The PayPal Order ID
+        amount: total, // The total cart amount
+      });
+      console.log("GoAffPro Conversion Logged for Order:", paymentSuccess);
+    }
+  }, [paymentSuccess, total]);
 
   const initialOptions = {
     "client-id": process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID,
@@ -64,6 +76,7 @@ export default function CheckoutPage() {
 
     if (details.status === "COMPLETED") {
       setPaymentSuccess(true);
+      setPaymentSuccess(data.orderID); // Save the actual ID!
       clearCart();
       // Wait a moment so they see the success screen, then route to their orders
       setTimeout(() => {
