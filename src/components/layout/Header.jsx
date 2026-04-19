@@ -29,7 +29,6 @@ export default function Header() {
     async function fetchUserAddress() {
       if (isLoggedIn && user?.id) {
         try {
-          // Fetch from our new 'profiles' table using the authenticated user's ID
           const { data, error } = await supabase
             .from('profiles')
             .select('city, postcode')
@@ -90,6 +89,7 @@ export default function Header() {
   const [isSearchDropdownOpen, setIsSearchDropdownOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchCategory, setSearchCategory] = useState("all"); 
+  const [isCatMenuOpen, setIsCatMenuOpen] = useState(false); // NEW STATE FOR CATEGORY DROPDOWN
   const router = useRouter();
 
   const desktopSearchRef = useRef(null);
@@ -119,6 +119,7 @@ export default function Header() {
       .catch(err => console.error("Error fetching header categories:", err));
   }, []);
 
+  // UPDATED: Now closes both search dropdown AND custom category dropdown on scroll/click outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (
@@ -126,14 +127,16 @@ export default function Header() {
         mobileSearchRef.current && !mobileSearchRef.current.contains(event.target)
       ) {
         setIsSearchDropdownOpen(false);
+        setIsCatMenuOpen(false); 
       }
     };
 
     const handleScroll = () => {
       setIsSearchDropdownOpen(false);
+      setIsCatMenuOpen(false);
     };
 
-    if (isSearchDropdownOpen) {
+    if (isSearchDropdownOpen || isCatMenuOpen) {
       document.addEventListener('mousedown', handleClickOutside);
       window.addEventListener('scroll', handleScroll, { passive: true });
     }
@@ -142,7 +145,7 @@ export default function Header() {
       document.removeEventListener('mousedown', handleClickOutside);
       window.removeEventListener('scroll', handleScroll);
     };
-  }, [isSearchDropdownOpen]);
+  }, [isSearchDropdownOpen, isCatMenuOpen]);
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -150,6 +153,7 @@ export default function Header() {
     if (!searchQuery.trim() && searchCategory !== "all") {
       router.push(`/category/${searchCategory}`); 
       setIsSearchDropdownOpen(false);
+      setIsCatMenuOpen(false);
       setIsMenuOpen(false);
       return;
     }
@@ -174,7 +178,20 @@ export default function Header() {
     
     setSearchQuery("");
     setIsSearchDropdownOpen(false);
+    setIsCatMenuOpen(false);
     setIsMenuOpen(false);
+  };
+
+  // HELPER TO DISPLAY THE CORRECT CATEGORY NAME IN THE NEW DROPDOWN
+  const getSelectedCategoryName = () => {
+    if (searchCategory === "all") return "All";
+    for (const parent of navCategories) {
+      if (parent.slug === searchCategory) return parent.name;
+      for (const sub of parent.children) {
+        if (sub.slug === searchCategory) return sub.name;
+      }
+    }
+    return "All";
   };
 
   let userLastName = "Shopper";
@@ -318,23 +335,47 @@ export default function Header() {
 
           {/* AMAZON STYLE SEARCH BAR */}
           <form ref={desktopSearchRef} onSubmit={handleSearch} className="flex-grow flex relative max-w-4xl ml-4">
-            <div className="flex w-full rounded-md overflow-hidden bg-white focus-within:ring-2 focus-within:ring-haitiRed">
+            <div className="flex w-full rounded-md bg-white focus-within:ring-2 focus-within:ring-haitiRed relative">
               
-              {/* CATEGORY DROPDOWN */}
-              <select 
-                value={searchCategory}
-                onChange={(e) => setSearchCategory(e.target.value)}
-                className="bg-gray-100 border-r border-gray-300 text-black text-sm px-2 focus:outline-none cursor-pointer w-auto flex-shrink-0"
+              {/* CUSTOM CATEGORY DROPDOWN (Replaces <select>) */}
+              <div 
+                className="relative flex-shrink-0 bg-gray-100 border-r border-gray-300 z-10 rounded-l-md"
+                onMouseLeave={() => setIsCatMenuOpen(false)}
               >
-                <option value="all">All</option>
-                {navCategories.map(parent => (
-                  <optgroup key={parent.id} label={parent.name}>
-                    {parent.children.map(sub => (
-                      <option key={sub.id} value={sub.slug}>{sub.name}</option>
+                <button 
+                  type="button"
+                  onClick={() => setIsCatMenuOpen(!isCatMenuOpen)}
+                  className="flex items-center justify-center gap-1 text-black text-sm px-3 py-2.5 focus:outline-none h-full w-fit whitespace-nowrap hover:bg-gray-200 transition-colors rounded-l-md"
+                >
+                  <span className="truncate max-w-[120px] font-medium">{getSelectedCategoryName()}</span>
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3 h-3"><path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" /></svg>
+                </button>
+                
+                {isCatMenuOpen && (
+                  <div className="absolute top-full left-0 mt-0 w-48 bg-white border border-gray-200 shadow-xl max-h-60 overflow-y-auto z-50 rounded-b-md">
+                    <div 
+                      className="px-3 py-2 text-sm cursor-pointer hover:bg-haitiBlue hover:text-white text-black transition-colors"
+                      onClick={() => { setSearchCategory('all'); setIsCatMenuOpen(false); }}
+                    >
+                      All
+                    </div>
+                    {navCategories.map(parent => (
+                      <div key={parent.id}>
+                        <div className="px-3 py-1 text-[11px] font-extrabold bg-gray-100 text-gray-500 uppercase">{parent.name}</div>
+                        {parent.children.map(sub => (
+                          <div 
+                            key={sub.id} 
+                            className="px-4 py-2 text-sm cursor-pointer hover:bg-haitiBlue hover:text-white text-black transition-colors"
+                            onClick={() => { setSearchCategory(sub.slug); setIsCatMenuOpen(false); }}
+                          >
+                            {sub.name}
+                          </div>
+                        ))}
+                      </div>
                     ))}
-                  </optgroup>
-                ))}
-              </select>
+                  </div>
+                )}
+              </div>
 
               <input 
                 type="text" 
@@ -344,7 +385,7 @@ export default function Header() {
                 className="flex-grow px-4 py-2 text-black focus:outline-none" 
               />
               
-              <button type="submit" className="bg-haitiRed hover:bg-red-700 text-white px-5 transition-colors flex items-center justify-center">
+              <button type="submit" className="bg-haitiRed hover:bg-red-700 text-white px-5 transition-colors flex items-center justify-center rounded-r-md">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" /></svg>
               </button>
             </div>
@@ -428,34 +469,58 @@ export default function Header() {
           </div>
         </div>
 
-        {/* MOBILE SEARCH */}
-        <form ref={mobileSearchRef} onSubmit={handleSearch} className="px-3 pb-3 relative">
-          <div className="flex items-center rounded overflow-hidden bg-white shadow-inner">
+        {/* MOBILE SEARCH - WITH PADDING AND CUSTOM DROPDOWN */}
+        <form ref={mobileSearchRef} onSubmit={handleSearch} className="px-4 pb-4 relative">
+          <div className="flex items-center bg-white shadow-inner relative border border-gray-300 rounded-md">
             
-            {/* ADDED CATEGORY DROPDOWN TO MOBILE */}
-            <select 
-              value={searchCategory}
-              onChange={(e) => setSearchCategory(e.target.value)}
-              className="bg-gray-100 border-r border-gray-300 text-black text-sm px-2 py-2 focus:outline-none cursor-pointer w-auto flex-shrink-0"
+            {/* CUSTOM CATEGORY DROPDOWN MOBILE (Replaces <select>) */}
+            <div 
+              className="relative flex-shrink-0 bg-gray-100 border-r border-gray-300 z-10 rounded-l-md"
+              onMouseLeave={() => setIsCatMenuOpen(false)}
             >
-              <option value="all">All</option>
-              {navCategories.map(parent => (
-                <optgroup key={parent.id} label={parent.name}>
-                  {parent.children.map(sub => (
-                    <option key={sub.id} value={sub.slug}>{sub.name}</option>
+              <button 
+                type="button"
+                onClick={() => setIsCatMenuOpen(!isCatMenuOpen)}
+                className="flex items-center justify-center gap-1 text-black text-sm px-3 py-2.5 focus:outline-none h-full w-fit whitespace-nowrap hover:bg-gray-200 transition-colors rounded-l-md"
+              >
+                <span className="truncate max-w-[90px] font-medium">{getSelectedCategoryName()}</span>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3 h-3"><path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" /></svg>
+              </button>
+              
+              {isCatMenuOpen && (
+                <div className="absolute top-full left-0 mt-0 w-48 bg-white border border-gray-200 shadow-xl max-h-60 overflow-y-auto z-50 rounded-b-md">
+                  <div 
+                    className="px-3 py-2 text-sm cursor-pointer hover:bg-haitiBlue hover:text-white text-black transition-colors"
+                    onClick={() => { setSearchCategory('all'); setIsCatMenuOpen(false); }}
+                  >
+                    All
+                  </div>
+                  {navCategories.map(parent => (
+                    <div key={parent.id}>
+                      <div className="px-3 py-1 text-[11px] font-extrabold bg-gray-100 text-gray-500 uppercase">{parent.name}</div>
+                      {parent.children.map(sub => (
+                        <div 
+                          key={sub.id} 
+                          className="px-4 py-2 text-sm cursor-pointer hover:bg-haitiBlue hover:text-white text-black transition-colors"
+                          onClick={() => { setSearchCategory(sub.slug); setIsCatMenuOpen(false); }}
+                        >
+                          {sub.name}
+                        </div>
+                      ))}
+                    </div>
                   ))}
-                </optgroup>
-              ))}
-            </select>
+                </div>
+              )}
+            </div>
 
             <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search EthoHaiti..." className="flex-grow px-3 py-2 text-black focus:outline-none" />
-            <button type="submit" className="bg-haitiRed text-white px-4 py-2 hover:bg-red-700 transition-colors h-full flex items-center justify-center">
+            <button type="submit" className="bg-haitiRed text-white px-4 py-2 hover:bg-red-700 transition-colors h-full flex items-center justify-center rounded-r-md">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" /></svg>
             </button>
           </div>
         </form>
         
-        {/* MOBILE DELIVER TO BAR (Amazon Style - ONE LINE FIX) */}
+        {/* MOBILE DELIVER TO BAR */}
         <Link href={isLoggedIn ? "/addresses" : "/account"} className="bg-slate-800 text-white px-4 py-2.5 flex flex-row items-center gap-2 text-sm font-medium border-t border-slate-700 cursor-pointer hover:bg-slate-700 transition-colors">
            <DeliveryLocation isMobile={true} />
         </Link>
