@@ -78,13 +78,14 @@ export default function CheckoutPage() {
       
       // 1. TRIGGER GOAFFPRO FIRST (Before the cart clears!)
       if (typeof window !== 'undefined') {
-        window.goaffpro_order = {
+        const goaffproOrder = {
           id: data.orderID,
-          amount: total
+          total: total // <-- THIS WAS THE TYPO! Changed 'amount' to 'total'
         };
-        // Fire their manual tracking function just to be bulletproof
+        
+        // Fire the manual tracking function
         if (window.goaffproTrackConversion) {
-          window.goaffproTrackConversion({ id: data.orderID, amount: total });
+          window.goaffproTrackConversion(goaffproOrder);
         }
       }
 
