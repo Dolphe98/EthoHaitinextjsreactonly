@@ -4,15 +4,18 @@ import { useEffect, useState } from 'react';
 import { useAuthStore } from '@/store/authStore';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { createClient } from '@/lib/supabase'; // <-- ADDED SUPABASE CLIENT
 
 export default function AddressesPage() {
   const { token, user } = useAuthStore();
   const router = useRouter();
-  
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
-  const [customerId, setCustomerId] = useState(null);
+  
+  // Initialize Supabase
+  const supabase = createClient();
 
   // Address State (We default to US, but you can change it)
   const [shipping, setShipping] = useState({
@@ -27,16 +30,30 @@ export default function AddressesPage() {
 
     async function fetchCustomerData() {
       try {
-        // Find the WooCommerce Customer ID and Data using their Email via our secure proxy
-        const endpoint = encodeURIComponent(`/wp-json/wc/v3/customers?email=${user.email}`);
-        const res = await fetch(`/api/woo?endpoint=${endpoint}`);
-        const data = await res.json();
+        // Fetch directly from our secure Supabase profiles table
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single();
 
-        if (data && data.length > 0) {
-          const customer = data[0];
-          setCustomerId(customer.id);
-          // If they already have an address saved in WooCommerce, load it!
-          if (customer.shipping) setShipping(customer.shipping);
+        if (error && error.code !== 'PGRST116') {
+          // PGRST116 just means no row was found (they haven't saved an address yet), which is totally fine!
+          throw error;
+        }
+
+        if (data) {
+          // Pre-fill the form if they have data saved
+          setShipping({
+            first_name: data.first_name || '',
+            last_name: data.last_name || '',
+            address_1: data.address_1 || '',
+            address_2: data.address_2 || '',
+            city: data.city || '',
+            state: data.state || '',
+            postcode: data.postcode || '',
+            country: data.country || 'US'
+          });
         }
       } catch (error) {
         console.error("Failed to fetch address:", error);
@@ -60,28 +77,27 @@ export default function AddressesPage() {
     setMessage({ type: '', text: '' });
 
     try {
-      // Update the customer in WooCommerce via our secure proxy
-      const res = await fetch('/api/woo', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          endpoint: `/wp-json/wc/v3/customers/${customerId}`,
-          // We sync Shipping and Billing to be exactly the same so Printify doesn't throw errors
-          data: { 
-            shipping: shipping,
-            billing: { ...shipping, email: user.email } 
-          }
-        }),
-      });
+      // Upsert: Updates the row if it exists, inserts it if it doesn't!
+      const { error } = await supabase
+        .from('profiles')
+        .upsert({
+          id: user.id, // This links the address strictly to this authenticated user
+          first_name: shipping.first_name,
+          last_name: shipping.last_name,
+          address_1: shipping.address_1,
+          address_2: shipping.address_2,
+          city: shipping.city,
+          state: shipping.state,
+          postcode: shipping.postcode,
+          country: shipping.country
+        }, { onConflict: 'id' });
 
-      const data = await res.json();
+      if (error) throw error;
       
-      if (data.id) {
-        setMessage({ type: 'success', text: 'Address successfully updated!' });
-      } else {
-        throw new Error('Failed to update address.');
-      }
+      setMessage({ type: 'success', text: 'Address successfully updated!' });
+      
     } catch (error) {
+      console.error("Save Address Error:", error);
       setMessage({ type: 'error', text: 'An error occurred while saving your address.' });
     } finally {
       setSaving(false);
@@ -164,7 +180,6 @@ export default function AddressesPage() {
                   <option value="US">United States</option>
                   <option value="HT">Haiti</option>
                   <option value="CA">Canada</option>
-                  {/* You can add more countries here later! */}
                 </select>
               </div>
             </div>
