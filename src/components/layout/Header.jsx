@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCartStore } from '../../store/cartStore';
 import { useAuthStore } from '../../store/authStore'; 
+import { createClient } from '@/lib/supabase'; // <-- ADDED SUPABASE CLIENT
 
 export default function Header() {
   const cart = useCartStore((state) => state.cart);
@@ -14,10 +15,40 @@ export default function Header() {
   const isLoggedIn = !!token;
 
   const [isMounted, setIsMounted] = useState(false);
+  const [shippingAddress, setShippingAddress] = useState(null); 
   
+  // Initialize Supabase
+  const supabase = createClient();
+
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  // --- THE NATIVE SUPABASE FETCH ---
+  useEffect(() => {
+    async function fetchUserAddress() {
+      if (isLoggedIn && user?.id) {
+        try {
+          // Fetch from our new 'profiles' table using the authenticated user's ID
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('city, postcode')
+            .eq('id', user.id)
+            .single();
+
+          if (data && data.city) {
+            setShippingAddress(data);
+          }
+        } catch (err) {
+          console.error("Failed to fetch address from Supabase:", err);
+        }
+      } else {
+        setShippingAddress(null);
+      }
+    }
+
+    fetchUserAddress();
+  }, [isLoggedIn, user]);
 
   // 24-HOUR INACTIVITY AUTO-LOGOUT GUARD
   useEffect(() => {
@@ -58,7 +89,7 @@ export default function Header() {
   const [navCategories, setNavCategories] = useState([]);
   const [isSearchDropdownOpen, setIsSearchDropdownOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchCategory, setSearchCategory] = useState("all"); // AMAZON SEARCH DROPDOWN STATE
+  const [searchCategory, setSearchCategory] = useState("all"); 
   const router = useRouter();
 
   const desktopSearchRef = useRef(null);
@@ -116,7 +147,6 @@ export default function Header() {
   const handleSearch = (e) => {
     e.preventDefault();
 
-    // If they picked a category from the dropdown but didn't type anything, just go to the category!
     if (!searchQuery.trim() && searchCategory !== "all") {
       router.push(`/category/${searchCategory}`); 
       setIsSearchDropdownOpen(false);
@@ -158,6 +188,50 @@ export default function Header() {
   if (userLastName.length > 7) {
     userLastName = userLastName.substring(0, 7) + '...';
   }
+
+  // --- THE DYNAMIC DELIVERY LOCATION COMPONENT ---
+  const DeliveryLocation = () => {
+    if (!isMounted) return null;
+
+    if (!isLoggedIn) {
+      return (
+        <>
+          <span className="text-[11px] text-gray-300 leading-tight font-medium pl-4">Deliver to</span>
+          <div className="flex items-center gap-1 font-extrabold text-sm leading-tight">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" />
+            </svg>
+            USA
+          </div>
+        </>
+      );
+    }
+
+    if (isLoggedIn && !shippingAddress) {
+      return (
+        <>
+          <span className="text-[11px] text-gray-300 leading-tight font-medium pl-1">Deliver to</span>
+          <div className="flex items-center font-extrabold text-sm leading-tight pl-1">
+            Add address
+          </div>
+        </>
+      );
+    }
+
+    return (
+      <>
+        <span className="text-[11px] text-gray-300 leading-tight font-medium pl-4">Deliver to</span>
+        <div className="flex items-center gap-1 font-extrabold text-sm leading-tight">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 flex-shrink-0">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" />
+          </svg>
+          <span className="truncate max-w-[120px]">{shippingAddress.city}</span> ... {shippingAddress.postcode}
+        </div>
+      </>
+    );
+  };
 
   return (
     <>
@@ -238,16 +312,9 @@ export default function Header() {
           </Link>
 
           {/* AMAZON STYLE DELIVER TO */}
-          <div className="flex flex-col text-white cursor-pointer hover:border-white border border-transparent p-1 rounded ml-2">
-            <span className="text-[11px] text-gray-300 leading-tight font-medium pl-4">Deliver to</span>
-            <div className="flex items-center gap-1 font-extrabold text-sm leading-tight">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" />
-              </svg>
-              {isMounted && isLoggedIn ? "Haiti" : "USA"}
-            </div>
-          </div>
+          <Link href={isLoggedIn ? "/addresses" : "/account"} className="flex flex-col text-white cursor-pointer hover:border-white border border-transparent p-1 rounded ml-2">
+            <DeliveryLocation />
+          </Link>
 
           {/* AMAZON STYLE SEARCH BAR */}
           <form ref={desktopSearchRef} onSubmit={handleSearch} className="flex-grow flex relative max-w-4xl ml-4">
@@ -372,13 +439,9 @@ export default function Header() {
         </form>
         
         {/* MOBILE DELIVER TO BAR (Amazon Style) */}
-        <div className="bg-slate-800 text-white px-4 py-2 flex items-center gap-2 text-sm font-medium border-t border-slate-700">
-           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
-             <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-             <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" />
-           </svg>
-           <span>Deliver to {isMounted && isLoggedIn ? "Haiti" : "USA"}</span>
-        </div>
+        <Link href={isLoggedIn ? "/addresses" : "/account"} className="bg-slate-800 text-white px-4 py-2 flex flex-col justify-center text-sm font-medium border-t border-slate-700 cursor-pointer hover:bg-slate-700 transition-colors">
+           <DeliveryLocation />
+        </Link>
 
         <div className="bg-ethoDark text-white text-sm px-3 py-2 flex items-center gap-5 overflow-x-auto whitespace-nowrap no-scrollbar border-t border-gray-700">
           {navCategories.map(parent => (
