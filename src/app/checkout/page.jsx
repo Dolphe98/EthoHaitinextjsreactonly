@@ -66,7 +66,7 @@ export default function CheckoutPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ 
         orderID: data.orderID,
-        cart: cart, // Pass the cart to the backend!
+        cart: cart, 
         userId: user?.id || null,
         userEmail: user?.email || null
       }),
@@ -75,12 +75,25 @@ export default function CheckoutPage() {
     const details = await res.json();
 
     if (details.status === "COMPLETED") {
-      setPaymentSuccess(true);
-      setPaymentSuccess(data.orderID); // Save the actual ID!
-      clearCart();
-      // Wait a moment so they see the success screen, then route to their orders
+      
+      // 1. TRIGGER GOAFFPRO FIRST (Before the cart clears!)
+      if (typeof window !== 'undefined') {
+        window.goaffpro_order = {
+          id: data.orderID,
+          amount: total
+        };
+        // Fire their manual tracking function just to be bulletproof
+        if (window.goaffproTrackConversion) {
+          window.goaffproTrackConversion({ id: data.orderID, amount: total });
+        }
+      }
+
+      setPaymentSuccess(data.orderID);
+      clearCart(); // Now it is safe to empty the cart
+      
+      // 2. THE FIX: Redirect to the correct invisible route
       setTimeout(() => {
-        router.push("/account/orders/recent"); 
+        router.push("/orders"); 
       }, 3000);
     } else {
       alert("Payment failed or was declined by PayPal.");
