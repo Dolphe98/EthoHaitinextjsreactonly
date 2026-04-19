@@ -29,6 +29,7 @@ export default function Header() {
     async function fetchUserAddress() {
       if (isLoggedIn && user?.id) {
         try {
+          // Fetch from our new 'profiles' table using the authenticated user's ID
           const { data, error } = await supabase
             .from('profiles')
             .select('city, postcode')
@@ -89,7 +90,7 @@ export default function Header() {
   const [isSearchDropdownOpen, setIsSearchDropdownOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchCategory, setSearchCategory] = useState("all"); 
-  const [isCatMenuOpen, setIsCatMenuOpen] = useState(false); // NEW STATE FOR CATEGORY DROPDOWN
+  const [isCatMenuOpen, setIsCatMenuOpen] = useState(false); 
   const router = useRouter();
 
   const desktopSearchRef = useRef(null);
@@ -337,7 +338,7 @@ export default function Header() {
           <form ref={desktopSearchRef} onSubmit={handleSearch} className="flex-grow flex relative max-w-4xl ml-4">
             <div className="flex w-full rounded-md bg-white focus-within:ring-2 focus-within:ring-haitiRed relative">
               
-              {/* CUSTOM CATEGORY DROPDOWN (Replaces <select>) */}
+              {/* CUSTOM CATEGORY DROPDOWN */}
               <div 
                 className="relative flex-shrink-0 bg-gray-100 border-r border-gray-300 z-10 rounded-l-md"
                 onMouseLeave={() => setIsCatMenuOpen(false)}
@@ -377,15 +378,17 @@ export default function Header() {
                 )}
               </div>
 
+              {/* FIX: min-w-0 added here */}
               <input 
                 type="text" 
                 value={searchQuery} 
                 onChange={(e) => setSearchQuery(e.target.value)} 
                 placeholder="Search EthoHaiti..." 
-                className="flex-grow px-4 py-2 text-black focus:outline-none" 
+                className="flex-grow min-w-0 px-4 py-2 text-black focus:outline-none" 
               />
               
-              <button type="submit" className="bg-haitiRed hover:bg-red-700 text-white px-5 transition-colors flex items-center justify-center rounded-r-md">
+              {/* FIX: flex-shrink-0 added here */}
+              <button type="submit" className="flex-shrink-0 bg-haitiRed hover:bg-red-700 text-white px-5 transition-colors flex items-center justify-center rounded-r-md">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" /></svg>
               </button>
             </div>
@@ -473,7 +476,7 @@ export default function Header() {
         <form ref={mobileSearchRef} onSubmit={handleSearch} className="px-4 pb-4 relative">
           <div className="flex items-center bg-white shadow-inner relative border border-gray-300 rounded-md">
             
-            {/* CUSTOM CATEGORY DROPDOWN MOBILE (Replaces <select>) */}
+            {/* CUSTOM CATEGORY DROPDOWN MOBILE */}
             <div 
               className="relative flex-shrink-0 bg-gray-100 border-r border-gray-300 z-10 rounded-l-md"
               onMouseLeave={() => setIsCatMenuOpen(false)}
@@ -513,8 +516,11 @@ export default function Header() {
               )}
             </div>
 
-            <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search EthoHaiti..." className="flex-grow px-3 py-2 text-black focus:outline-none" />
-            <button type="submit" className="bg-haitiRed text-white px-4 py-2 hover:bg-red-700 transition-colors h-full flex items-center justify-center rounded-r-md">
+            {/* FIX: min-w-0 and w-full added here */}
+            <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search EthoHaiti..." className="flex-grow min-w-0 w-full px-3 py-2 text-black focus:outline-none" />
+            
+            {/* FIX: flex-shrink-0 added here */}
+            <button type="submit" className="flex-shrink-0 bg-haitiRed text-white px-4 py-2 hover:bg-red-700 transition-colors h-full flex items-center justify-center rounded-r-md">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" /></svg>
             </button>
           </div>
