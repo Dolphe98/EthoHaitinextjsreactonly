@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCartStore } from '../../store/cartStore';
 import { useAuthStore } from '../../store/authStore'; 
-import { createClient } from '@/lib/supabase'; // <-- ADDED SUPABASE CLIENT
+import { createClient } from '@/lib/supabase'; 
 
 export default function Header() {
   const cart = useCartStore((state) => state.cart);
@@ -190,15 +190,15 @@ export default function Header() {
   }
 
   // --- THE DYNAMIC DELIVERY LOCATION COMPONENT ---
-  const DeliveryLocation = () => {
+  const DeliveryLocation = ({ isMobile }) => {
     if (!isMounted) return null;
 
     if (!isLoggedIn) {
       return (
         <>
-          <span className="text-[11px] text-gray-300 leading-tight font-medium pl-4">Deliver to</span>
-          <div className="flex items-center gap-1 font-extrabold text-sm leading-tight">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
+          <span className={isMobile ? "text-gray-300 leading-tight font-medium" : "text-[11px] text-gray-300 leading-tight font-medium pl-4"}>Deliver to</span>
+          <div className={`flex items-center gap-1 font-extrabold ${isMobile ? 'text-sm' : 'text-sm leading-tight'}`}>
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 flex-shrink-0">
               <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
               <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" />
             </svg>
@@ -211,8 +211,8 @@ export default function Header() {
     if (isLoggedIn && !shippingAddress) {
       return (
         <>
-          <span className="text-[11px] text-gray-300 leading-tight font-medium pl-1">Deliver to</span>
-          <div className="flex items-center font-extrabold text-sm leading-tight pl-1">
+          <span className={isMobile ? "text-gray-300 leading-tight font-medium" : "text-[11px] text-gray-300 leading-tight font-medium pl-1"}>Deliver to</span>
+          <div className={`flex items-center font-extrabold ${isMobile ? 'text-sm ml-1' : 'text-sm leading-tight pl-1'}`}>
             Add address
           </div>
         </>
@@ -221,8 +221,8 @@ export default function Header() {
 
     return (
       <>
-        <span className="text-[11px] text-gray-300 leading-tight font-medium pl-4">Deliver to</span>
-        <div className="flex items-center gap-1 font-extrabold text-sm leading-tight">
+        <span className={isMobile ? "text-gray-300 leading-tight font-medium" : "text-[11px] text-gray-300 leading-tight font-medium pl-4"}>Deliver to</span>
+        <div className={`flex items-center gap-1 font-extrabold ${isMobile ? 'text-sm' : 'text-sm leading-tight'}`}>
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 flex-shrink-0">
             <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
             <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" />
@@ -313,7 +313,7 @@ export default function Header() {
 
           {/* AMAZON STYLE DELIVER TO */}
           <Link href={isLoggedIn ? "/addresses" : "/account"} className="flex flex-col text-white cursor-pointer hover:border-white border border-transparent p-1 rounded ml-2">
-            <DeliveryLocation />
+            <DeliveryLocation isMobile={false} />
           </Link>
 
           {/* AMAZON STYLE SEARCH BAR */}
@@ -324,7 +324,7 @@ export default function Header() {
               <select 
                 value={searchCategory}
                 onChange={(e) => setSearchCategory(e.target.value)}
-                className="bg-gray-100 border-r border-gray-300 text-black text-sm px-2 focus:outline-none cursor-pointer max-w-[120px] md:max-w-[160px] truncate"
+                className="bg-gray-100 border-r border-gray-300 text-black text-sm px-2 focus:outline-none cursor-pointer w-auto flex-shrink-0"
               >
                 <option value="all">All</option>
                 {navCategories.map(parent => (
@@ -431,6 +431,23 @@ export default function Header() {
         {/* MOBILE SEARCH */}
         <form ref={mobileSearchRef} onSubmit={handleSearch} className="px-3 pb-3 relative">
           <div className="flex items-center rounded overflow-hidden bg-white shadow-inner">
+            
+            {/* ADDED CATEGORY DROPDOWN TO MOBILE */}
+            <select 
+              value={searchCategory}
+              onChange={(e) => setSearchCategory(e.target.value)}
+              className="bg-gray-100 border-r border-gray-300 text-black text-sm px-2 py-2 focus:outline-none cursor-pointer w-auto flex-shrink-0"
+            >
+              <option value="all">All</option>
+              {navCategories.map(parent => (
+                <optgroup key={parent.id} label={parent.name}>
+                  {parent.children.map(sub => (
+                    <option key={sub.id} value={sub.slug}>{sub.name}</option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+
             <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search EthoHaiti..." className="flex-grow px-3 py-2 text-black focus:outline-none" />
             <button type="submit" className="bg-haitiRed text-white px-4 py-2 hover:bg-red-700 transition-colors h-full flex items-center justify-center">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" /></svg>
@@ -438,9 +455,9 @@ export default function Header() {
           </div>
         </form>
         
-        {/* MOBILE DELIVER TO BAR (Amazon Style) */}
-        <Link href={isLoggedIn ? "/addresses" : "/account"} className="bg-slate-800 text-white px-4 py-2 flex flex-col justify-center text-sm font-medium border-t border-slate-700 cursor-pointer hover:bg-slate-700 transition-colors">
-           <DeliveryLocation />
+        {/* MOBILE DELIVER TO BAR (Amazon Style - ONE LINE FIX) */}
+        <Link href={isLoggedIn ? "/addresses" : "/account"} className="bg-slate-800 text-white px-4 py-2.5 flex flex-row items-center gap-2 text-sm font-medium border-t border-slate-700 cursor-pointer hover:bg-slate-700 transition-colors">
+           <DeliveryLocation isMobile={true} />
         </Link>
 
         <div className="bg-ethoDark text-white text-sm px-3 py-2 flex items-center gap-5 overflow-x-auto whitespace-nowrap no-scrollbar border-t border-gray-700">
