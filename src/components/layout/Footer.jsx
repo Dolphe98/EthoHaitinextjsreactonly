@@ -87,6 +87,13 @@ export default function Footer() {
       <div className="bg-black py-6 mt-4">
         <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row justify-between items-center text-xs text-gray-400 gap-4">
           <span>© {new Date().getFullYear()} EthoHaiti Enterprise. All rights reserved.</span>
+          
+          {/* THE NEW LEGAL LINKS */}
+          <div className="flex gap-4 font-bold">
+            <Link href="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>
+            <Link href="/terms" className="hover:text-white transition-colors">Terms & Conditions</Link>
+          </div>
+
         </div>
       </div>
     </footer>
