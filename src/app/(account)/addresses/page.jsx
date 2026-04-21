@@ -5,7 +5,7 @@ import { useAuthStore } from '@/store/authStore';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase'; 
-import Script from 'next/script'; // NEW: To load Google Maps
+import Script from 'next/script';
 
 export default function AddressesPage() {
   const { token, user } = useAuthStore();
@@ -15,22 +15,28 @@ export default function AddressesPage() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
   
-  // UI Toggle States
+  // Multi-Address States
+  const [addresses, setAddresses] = useState([]);
   const [isEditing, setIsEditing] = useState(false);
-  const [hasAddress, setHasAddress] = useState(false);
+  const [editingId, setEditingId] = useState(null); // null = adding new
   
-  // NEW: Google Maps UI States
+  // Modal States
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [addressToDelete, setAddressToDelete] = useState(null);
+
+  // Form State
+  const [currentForm, setCurrentForm] = useState({
+    id: '', fullName: '', phone: '', address_1: '', address_2: '', city: '', state: '', postcode: '', country: 'US'
+  });
+  const [zipError, setZipError] = useState("");
+  
+  // Google Maps UI States
   const [isLocked, setIsLocked] = useState(true); 
   const addressInputRef = useRef(null);
   
-  // Initialize Supabase
   const supabase = createClient();
 
-  // Address State
-  const [shipping, setShipping] = useState({
-    first_name: '', last_name: '', address_1: '', address_2: '', city: '', state: '', postcode: '', country: 'US'
-  });
-
+  // 1. Fetch User Data
   useEffect(() => {
     if (!token) {
       router.push('/account');
@@ -45,24 +51,28 @@ export default function AddressesPage() {
           .eq('id', user.id)
           .single();
 
-        if (error && error.code !== 'PGRST116') {
-          throw error;
-        }
+        if (error && error.code !== 'PGRST116') throw error;
 
-        if (data && data.address_1) {
-          setShipping({
-            first_name: data.first_name || '',
-            last_name: data.last_name || '',
-            address_1: data.address_1 || '',
-            address_2: data.address_2 || '',
-            city: data.city || '',
-            state: data.state || '',
-            postcode: data.postcode || '',
-            country: data.country || 'US'
-          });
-          setHasAddress(true);
-        } else {
-          setHasAddress(false);
+        if (data) {
+          // If they have an address_book JSON array, load it
+          if (data.address_book && Array.isArray(data.address_book) && data.address_book.length > 0) {
+            setAddresses(data.address_book);
+          } 
+          // Fallback: If no array, but they have a legacy flat address, convert it to the first array item
+          else if (data.address_1) {
+            const legacyAddress = {
+              id: Date.now().toString(),
+              fullName: `${data.first_name || ''} ${data.last_name || ''}`.trim(),
+              phone: data.phone || '',
+              address_1: data.address_1,
+              address_2: data.address_2 || '',
+              city: data.city || '',
+              state: data.state || '',
+              postcode: data.postcode || '',
+              country: data.country || 'US'
+            };
+            setAddresses([legacyAddress]);
+          }
         }
       } catch (error) {
         console.error("Failed to fetch address:", error);
@@ -75,7 +85,7 @@ export default function AddressesPage() {
     fetchCustomerData();
   }, [token, user, router, supabase]);
 
-  // NEW: Initialize Google Maps Autocomplete
+  // 2. Initialize Google Maps Autocomplete
   const initAutocomplete = () => {
     if (!window.google || !addressInputRef.current) return;
     
@@ -88,83 +98,125 @@ export default function AddressesPage() {
       const place = autocomplete.getPlace();
       if (!place.address_components) return;
 
-      let streetNumber = '';
-      let route = '';
-      let city = '';
-      let state = '';
-      let zip = '';
-      let country = 'US';
+      let streetNumber = ''; let route = ''; let city = ''; let state = ''; let zip = ''; let country = 'US';
 
-      // Parse the Google Data Payload
       for (const component of place.address_components) {
         const type = component.types[0];
         if (type === 'street_number') streetNumber = component.long_name;
         if (type === 'route') route = component.long_name;
         if (type === 'locality' || type === 'sublocality_level_1') city = component.long_name;
-        if (type === 'administrative_area_level_1') state = component.short_name; // Gets 'FL' not Florida
+        if (type === 'administrative_area_level_1') state = component.short_name;
         if (type === 'postal_code') zip = component.long_name;
         if (type === 'country') country = component.short_name;
       }
 
-      // Snap the data into our form state
-      setShipping(prev => ({
+      setCurrentForm(prev => ({
         ...prev,
         address_1: `${streetNumber} ${route}`.trim(),
         city: city,
         state: state,
         postcode: zip,
-        country: country
+        country: country === 'US' || country === 'CA' ? country : 'US' // Restrict to US/CA
       }));
 
-      // Unlock the rest of the form!
       setIsLocked(false);
+      setZipError(""); // Clear any previous zip errors
     });
   };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setShipping((prev) => ({ ...prev, [name]: value }));
+    setCurrentForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSaveAddress = async (e) => {
-    e.preventDefault();
-    setSaving(true);
-    setMessage({ type: '', text: 'Validating address with shipping carrier...' });
+  // 3. The "Amazon-Style" ZIP Code Validator (Zippopotam.us)
+  const handleZipBlur = async () => {
+    const { postcode, country, state, city } = currentForm;
+    setZipError(""); // Reset error
+
+    if (!postcode || country !== 'US') return; // Zippopotam is most reliable for US
 
     try {
-      // 1. Printify Validation Ping
+      const res = await fetch(`https://api.zippopotam.us/us/${postcode}`);
+      if (!res.ok) {
+        setZipError("Invalid ZIP Code format or not found.");
+        return;
+      }
+      const data = await res.json();
+      const apiState = data.places[0]['state abbreviation'];
+      
+      if (state && apiState.toLowerCase() !== state.toLowerCase()) {
+         setZipError(`Please enter a valid ZIP Code for ${city || 'this area'}, ${state}.`);
+      }
+    } catch (e) {
+      console.error("ZIP API failed, bypassing soft validation.");
+    }
+  };
+
+  // 4. Save Address
+  const handleSaveAddress = async (e) => {
+    e.preventDefault();
+    if (zipError) return; // Block save if ZIP is clearly wrong
+    
+    setSaving(true);
+    setMessage({ type: '', text: 'Validating address with Printify carrier...' });
+
+    // Split Full Name under the hood for Printify
+    const nameParts = currentForm.fullName.trim().split(' ');
+    const first_name = nameParts[0] || '';
+    const last_name = nameParts.slice(1).join(' ') || '';
+
+    const shippingPayload = {
+      first_name, last_name, ...currentForm
+    };
+
+    try {
+      // Printify Validation Ping
       const validationRes = await fetch('/api/validate-address', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(shipping)
+        body: JSON.stringify(shippingPayload)
       });
-
       const validationData = await validationRes.json();
+      if (!validationRes.ok) throw new Error(`${validationData.error}`);
 
-      if (!validationRes.ok) {
-        throw new Error(`Shipping carrier error: ${validationData.error}`);
+      setMessage({ type: '', text: 'Address verified! Saving to profile...' });
+
+      // Create new list
+      let updatedAddresses = [...addresses];
+      const addressToSave = { ...currentForm, id: editingId || Date.now().toString() };
+
+      if (editingId) {
+        updatedAddresses = updatedAddresses.map(a => a.id === editingId ? addressToSave : a);
+      } else {
+        // New addresses go to the TOP (Index 0) to be the new default
+        updatedAddresses = [addressToSave, ...updatedAddresses];
       }
 
-      // 2. Save to Supabase
-      setMessage({ type: '', text: 'Address verified! Saving to profile...' });
+      // Save to Supabase (JSON Array AND updating legacy flat fields with the default/latest address)
+      const defaultAddress = updatedAddresses[0];
+      const defaultNameParts = defaultAddress.fullName.trim().split(' ');
 
       const { error: supabaseError } = await supabase
         .from('profiles')
         .upsert({
           id: user.id, 
-          first_name: shipping.first_name,
-          last_name: shipping.last_name,
-          address_1: shipping.address_1,
-          address_2: shipping.address_2,
-          city: shipping.city,
-          state: shipping.state,
-          postcode: shipping.postcode,
-          country: shipping.country
+          address_book: updatedAddresses, // The new array column
+          // The legacy flat fields so checkout doesn't break
+          first_name: defaultNameParts[0] || '',
+          last_name: defaultNameParts.slice(1).join(' ') || '',
+          phone: defaultAddress.phone,
+          address_1: defaultAddress.address_1,
+          address_2: defaultAddress.address_2,
+          city: defaultAddress.city,
+          state: defaultAddress.state,
+          postcode: defaultAddress.postcode,
+          country: defaultAddress.country
         }, { onConflict: 'id' });
 
       if (supabaseError) throw new Error('Database failed to save the address.');
       
-      setHasAddress(true); 
+      setAddresses(updatedAddresses);
       setIsEditing(false); 
       setMessage({ type: 'success', text: 'Address successfully verified and updated!' });
       
@@ -177,6 +229,43 @@ export default function AddressesPage() {
     }
   };
 
+  // 5. Delete Interactions
+  const triggerDelete = (id) => {
+    setAddressToDelete(id);
+    setIsModalOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    const updatedAddresses = addresses.filter(a => a.id !== addressToDelete);
+    setAddresses(updatedAddresses);
+    setIsModalOpen(false);
+    setAddressToDelete(null);
+
+    // Sync to Supabase
+    const defaultAddress = updatedAddresses.length > 0 ? updatedAddresses[0] : null;
+    await supabase.from('profiles').upsert({
+      id: user.id,
+      address_book: updatedAddresses,
+      address_1: defaultAddress ? defaultAddress.address_1 : null // nullify flat field if empty
+    });
+  };
+
+  const openNewForm = () => {
+    setCurrentForm({ id: '', fullName: '', phone: '', address_1: '', address_2: '', city: '', state: '', postcode: '', country: 'US' });
+    setEditingId(null);
+    setIsLocked(true);
+    setZipError("");
+    setIsEditing(true);
+  };
+
+  const openEditForm = (address) => {
+    setCurrentForm(address);
+    setEditingId(address.id);
+    setIsLocked(false); // Unlock immediately if editing
+    setZipError("");
+    setIsEditing(true);
+  };
+
   if (loading) {
     return (
       <div className="pt-32 pb-20 min-h-screen bg-ethoBg flex flex-col items-center justify-center">
@@ -187,15 +276,31 @@ export default function AddressesPage() {
   }
 
   return (
-    <main className="pt-32 pb-20 min-h-screen bg-ethoBg">
-      {/* LOAD GOOGLE MAPS API */}
+    <main className="pt-32 pb-20 min-h-screen bg-ethoBg relative">
       <Script 
         src={`https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY}&libraries=places`} 
         strategy="afterInteractive"
         onLoad={initAutocomplete}
       />
 
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+      {/* DELETE CONFIRMATION MODAL */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center px-4">
+          <div className="bg-white rounded-xl shadow-2xl p-8 max-w-md w-full text-center">
+            <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-8 h-8"><path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /></svg>
+            </div>
+            <h2 className="text-xl font-bold text-ethoDark mb-2">Delete Address?</h2>
+            <p className="text-gray-500 mb-8">Are you sure you want to delete this address? This action cannot be undone.</p>
+            <div className="flex gap-4">
+              <button onClick={() => setIsModalOpen(false)} className="flex-1 px-6 py-3 rounded font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors">Cancel</button>
+              <button onClick={confirmDelete} className="flex-1 px-6 py-3 rounded font-bold text-white bg-haitiRed hover:bg-red-700 transition-colors shadow-md">Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         
         <nav className="text-sm text-gray-500 mb-8 font-medium">
           <Link href="/account" className="hover:text-haitiBlue transition-colors">Your Account</Link>
@@ -203,7 +308,15 @@ export default function AddressesPage() {
           <span className="text-ethoDark">Your Addresses</span>
         </nav>
 
-        <h1 className="text-3xl font-extrabold text-ethoDark mb-8">Your Addresses</h1>
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-3xl font-extrabold text-ethoDark">Your Addresses</h1>
+          {!isEditing && (
+            <button onClick={openNewForm} className="bg-haitiBlue hover:bg-blue-800 text-white font-extrabold py-2 px-6 rounded transition-colors shadow-sm flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+              Add New Address
+            </button>
+          )}
+        </div>
 
         {message.text && (
           <div className={`p-4 mb-6 rounded font-bold text-center ${message.type === 'error' ? 'bg-red-50 text-haitiRed border border-red-200' : 'bg-green-50 text-green-700 border border-green-200'}`}>
@@ -211,94 +324,91 @@ export default function AddressesPage() {
           </div>
         )}
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          
-          <div className="p-6 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
-            <div>
-              <h2 className="text-xl font-bold text-ethoDark">Default Shipping Address</h2>
-              <p className="text-sm text-gray-500 mt-1">This address will be automatically used at checkout.</p>
+        {isEditing ? (
+          /* THE HIGHLY OPTIMIZED ADD/EDIT FORM */
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div className="p-6 border-b border-gray-200 bg-gray-50">
+              <h2 className="text-xl font-bold text-ethoDark">{editingId ? 'Edit Address' : 'Add a New Address'}</h2>
             </div>
-            {!isEditing && hasAddress && (
-              <button 
-                onClick={() => { setIsEditing(true); setIsLocked(true); }} 
-                className="flex items-center gap-2 text-haitiBlue hover:text-blue-800 font-bold px-4 py-2 border border-gray-300 rounded bg-white hover:bg-gray-50 transition-colors shadow-sm"
-              >
-                ✏️ Edit
-              </button>
-            )}
-          </div>
-
-          {isEditing ? (
             
-            <form onSubmit={handleSaveAddress} className="p-6 space-y-6">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-bold text-ethoDark mb-2">First Name</label>
-                  <input type="text" name="first_name" value={shipping.first_name} onChange={handleInputChange} className="w-full px-4 py-3 border border-gray-300 rounded focus:ring-2 focus:ring-haitiBlue focus:outline-none text-black" required />
-                </div>
-                <div>
-                  <label className="block text-sm font-bold text-ethoDark mb-2">Last Name</label>
-                  <input type="text" name="last_name" value={shipping.last_name} onChange={handleInputChange} className="w-full px-4 py-3 border border-gray-300 rounded focus:ring-2 focus:ring-haitiBlue focus:outline-none text-black" required />
-                </div>
+            <form onSubmit={handleSaveAddress} className="p-6 space-y-6 max-w-2xl">
+              
+              <div>
+                <label className="block text-sm font-bold text-ethoDark mb-2">Country / Region</label>
+                <select name="country" value={currentForm.country} onChange={handleInputChange} className="w-full px-4 py-3 border border-gray-300 rounded focus:ring-2 focus:ring-haitiBlue focus:outline-none bg-white cursor-pointer text-black font-medium">
+                  <option value="US">United States</option>
+                  <option value="CA">Canada</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-ethoDark mb-2">Full Name</label>
+                <input type="text" name="fullName" value={currentForm.fullName} onChange={handleInputChange} placeholder="First and Last Name" className="w-full px-4 py-3 border border-gray-300 rounded focus:ring-2 focus:ring-haitiBlue focus:outline-none text-black" required />
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-ethoDark mb-1">Phone Number</label>
+                <p className="text-xs text-gray-500 mb-2">Required by shipping carriers for delivery issues.</p>
+                <input type="tel" name="phone" value={currentForm.phone} onChange={handleInputChange} className="w-full px-4 py-3 border border-gray-300 rounded focus:ring-2 focus:ring-haitiBlue focus:outline-none text-black" required />
               </div>
 
               {/* THE GOOGLE SMART SEARCH BAR */}
               <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
-                <label className="block text-sm font-extrabold text-haitiBlue mb-2">Start typing your street address...</label>
+                <label className="block text-sm font-extrabold text-haitiBlue mb-2">Street address or P.O. Box</label>
                 <input 
                   type="text" 
                   ref={addressInputRef}
                   name="address_1" 
-                  value={shipping.address_1} 
+                  value={currentForm.address_1} 
                   onChange={handleInputChange} 
-                  placeholder="123 Main St" 
+                  placeholder="Start typing your street address..." 
                   className="w-full px-4 py-4 border-2 border-haitiBlue rounded shadow-sm focus:ring-2 focus:ring-haitiBlue focus:outline-none text-black font-bold text-lg" 
                   required 
                 />
                 
                 {isLocked && (
-                  <button 
-                    type="button" 
-                    onClick={() => setIsLocked(false)} 
-                    className="text-sm font-bold text-gray-500 hover:text-ethoDark mt-3 underline"
-                  >
-                    Address not showing up? Enter manually.
+                  <button type="button" onClick={() => setIsLocked(false)} className="text-sm font-bold text-gray-500 hover:text-ethoDark mt-3 underline">
+                    Enter address manually instead.
                   </button>
                 )}
               </div>
 
-              {/* THE REVEALED FIELDS */}
+              {/* THE REVEALED SMART LOCALITY BLOCK */}
               <div className={`transition-all duration-500 overflow-hidden ${isLocked ? 'max-h-0 opacity-0' : 'max-h-[1000px] opacity-100'}`}>
                 <div className="space-y-6">
                   <div>
-                    <label className="block text-sm font-bold text-ethoDark mb-2">Apartment, suite, etc. (optional)</label>
-                    <input type="text" name="address_2" value={shipping.address_2} onChange={handleInputChange} placeholder="Apt 4B" className="w-full px-4 py-3 border border-gray-300 rounded focus:ring-2 focus:ring-haitiBlue focus:outline-none text-black" />
+                    <label className="block text-sm font-bold text-ethoDark mb-2">Apt, suite, unit, building, floor, etc. (Optional)</label>
+                    <input type="text" name="address_2" value={currentForm.address_2} onChange={handleInputChange} className="w-full px-4 py-3 border border-gray-300 rounded focus:ring-2 focus:ring-haitiBlue focus:outline-none text-black" />
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                     <div>
                       <label className="block text-sm font-bold text-ethoDark mb-2">City</label>
-                      <input type="text" name="city" value={shipping.city} onChange={handleInputChange} className="w-full px-4 py-3 border border-gray-300 rounded focus:ring-2 focus:ring-haitiBlue focus:outline-none text-black" required={!isLocked} />
+                      <input type="text" name="city" value={currentForm.city} onChange={handleInputChange} className="w-full px-4 py-3 border border-gray-300 rounded focus:ring-2 focus:ring-haitiBlue focus:outline-none text-black" required={!isLocked} />
                     </div>
                     <div>
-                      <label className="block text-sm font-bold text-ethoDark mb-2">State / Province (2 Letters)</label>
-                      <input type="text" name="state" value={shipping.state} onChange={handleInputChange} placeholder="FL" maxLength={2} className="w-full px-4 py-3 border border-gray-300 rounded focus:ring-2 focus:ring-haitiBlue focus:outline-none text-black uppercase" required={!isLocked} />
+                      <label className="block text-sm font-bold text-ethoDark mb-2">State / Province</label>
+                      <input type="text" name="state" value={currentForm.state} onChange={handleInputChange} placeholder="FL" maxLength={2} className="w-full px-4 py-3 border border-gray-300 rounded focus:ring-2 focus:ring-haitiBlue focus:outline-none text-black uppercase" required={!isLocked} />
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-sm font-bold text-ethoDark mb-2">ZIP / Postal Code</label>
-                      <input type="text" name="postcode" value={shipping.postcode} onChange={handleInputChange} className="w-full px-4 py-3 border border-gray-300 rounded focus:ring-2 focus:ring-haitiBlue focus:outline-none text-black" required={!isLocked} />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-bold text-ethoDark mb-2">Country</label>
-                      <select name="country" value={shipping.country} onChange={handleInputChange} className="w-full px-4 py-3 border border-gray-300 rounded focus:ring-2 focus:ring-haitiBlue focus:outline-none bg-white cursor-pointer text-black" required={!isLocked}>
-                        <option value="US">United States</option>
-                        <option value="HT">Haiti</option>
-                        <option value="CA">Canada</option>
-                      </select>
-                    </div>
+                  <div>
+                    <label className="block text-sm font-bold text-ethoDark mb-2">ZIP / Postal Code</label>
+                    <input 
+                      type="text" 
+                      name="postcode" 
+                      value={currentForm.postcode} 
+                      onChange={handleInputChange} 
+                      onBlur={handleZipBlur}
+                      className={`w-full px-4 py-3 border rounded focus:outline-none text-black transition-colors ${zipError ? 'border-red-500 focus:ring-2 focus:ring-red-500' : 'border-gray-300 focus:ring-2 focus:ring-haitiBlue'}`} 
+                      required={!isLocked} 
+                    />
+                    {zipError && (
+                      <p className="text-red-600 font-bold text-sm mt-2 flex items-center gap-1">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                        {zipError} Add delivery instructions if this is a new construction.
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -306,21 +416,10 @@ export default function AddressesPage() {
               <hr className="border-gray-200 mt-6" />
 
               <div className="flex justify-end gap-4 mt-6">
-                {hasAddress && (
-                  <button 
-                    type="button" 
-                    onClick={() => setIsEditing(false)}
-                    className="px-6 py-3 rounded font-extrabold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                )}
-                
-                <button 
-                  type="submit" 
-                  disabled={saving || isLocked}
-                  className={`px-8 py-3 rounded font-extrabold text-white shadow-md transition-colors flex items-center gap-2 ${saving || isLocked ? 'bg-gray-400 cursor-not-allowed' : 'bg-haitiRed hover:bg-red-700'}`}
-                >
+                <button type="button" onClick={() => setIsEditing(false)} className="px-6 py-3 rounded font-extrabold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors">
+                  Cancel
+                </button>
+                <button type="submit" disabled={saving || isLocked || !!zipError} className={`px-8 py-3 rounded font-extrabold text-white shadow-md transition-colors flex items-center gap-2 ${(saving || isLocked || !!zipError) ? 'bg-gray-400 cursor-not-allowed' : 'bg-haitiRed hover:bg-red-700'}`}>
                   {saving ? (
                     <>
                       <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
@@ -330,46 +429,54 @@ export default function AddressesPage() {
                 </button>
               </div>
             </form>
+          </div>
 
-          ) : hasAddress ? (
-            
-            <div className="p-8">
-              <div className="bg-gray-50 p-6 rounded-lg border border-gray-200 shadow-inner">
-                <p className="font-extrabold text-xl text-ethoDark mb-3">{shipping.first_name} {shipping.last_name}</p>
-                <div className="text-gray-700 space-y-1 text-lg">
-                  <p>{shipping.address_1}</p>
-                  {shipping.address_2 && <p>{shipping.address_2}</p>}
-                  <p>{shipping.city}, {shipping.state} {shipping.postcode}</p>
-                  <p className="font-medium mt-2 text-gray-500 uppercase tracking-wide">
-                    {shipping.country === 'US' ? 'United States' : shipping.country === 'HT' ? 'Haiti' : 'Canada'}
-                  </p>
+        ) : addresses.length > 0 ? (
+          
+          /* THE CARD LIST VIEW */
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            {addresses.map((addr, index) => (
+              <div key={addr.id} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 flex flex-col relative group hover:shadow-md transition-shadow">
+                {index === 0 && (
+                  <span className="absolute top-4 right-4 bg-gray-100 text-gray-500 text-xs font-extrabold px-2 py-1 rounded">Default</span>
+                )}
+                
+                <p className="font-extrabold text-lg text-ethoDark mb-2">{addr.fullName}</p>
+                <div className="text-gray-600 text-sm space-y-1 mb-6 flex-grow">
+                  <p>{addr.address_1}</p>
+                  {addr.address_2 && <p>{addr.address_2}</p>}
+                  <p>{addr.city}, {addr.state} {addr.postcode}</p>
+                  <p className="pt-2">Phone number: {addr.phone}</p>
+                </div>
+
+                <div className="flex gap-4 border-t border-gray-100 pt-4 mt-auto">
+                  <button onClick={() => openEditForm(addr)} className="text-haitiBlue hover:underline font-bold text-sm">Edit</button>
+                  <span className="text-gray-300">|</span>
+                  <button onClick={() => triggerDelete(addr.id)} className="text-gray-500 hover:text-haitiRed hover:underline font-bold text-sm">Delete</button>
                 </div>
               </div>
+            ))}
+          </div>
+
+        ) : (
+          
+          /* EMPTY STATE */
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center flex flex-col items-center justify-center">
+            <div className="bg-blue-50 p-4 rounded-full mb-4">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-12 h-12 text-haitiBlue">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" />
+              </svg>
             </div>
+            <h3 className="text-xl font-extrabold text-ethoDark mb-2">No Addresses Saved</h3>
+            <p className="text-gray-500 mb-6 max-w-md">You haven't saved any delivery addresses yet. Add one now to make checkout lightning fast.</p>
+            <button onClick={openNewForm} className="bg-haitiBlue hover:bg-blue-800 text-white font-extrabold py-3 px-8 rounded transition-colors shadow-md flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+              Add New Address
+            </button>
+          </div>
 
-          ) : (
-            
-            <div className="p-12 text-center flex flex-col items-center justify-center">
-              <div className="bg-blue-50 p-4 rounded-full mb-4">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-12 h-12 text-haitiBlue">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" />
-                </svg>
-              </div>
-              <h3 className="text-xl font-extrabold text-ethoDark mb-2">No Address Saved</h3>
-              <p className="text-gray-500 mb-6 max-w-md">You haven't saved a default delivery address yet. Add one now to make checkout lightning fast.</p>
-              <button 
-                onClick={() => { setIsEditing(true); setIsLocked(true); }} 
-                className="bg-haitiBlue hover:bg-blue-800 text-white font-extrabold py-3 px-8 rounded transition-colors shadow-md flex items-center gap-2"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
-                Add New Address
-              </button>
-            </div>
-
-          )}
-        </div>
-
+        )}
       </div>
     </main>
   );
