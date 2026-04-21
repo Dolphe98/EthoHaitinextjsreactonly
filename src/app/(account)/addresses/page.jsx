@@ -23,9 +23,9 @@ export default function AddressesPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [addressToDelete, setAddressToDelete] = useState(null);
 
-  // Form State
+  // Form State - ADDED EMAIL & DELIVERY INSTRUCTIONS
   const [currentForm, setCurrentForm] = useState({
-    id: '', fullName: '', phone: '', address_1: '', address_2: '', city: '', state: '', postcode: '', country: 'US'
+    id: '', fullName: '', email: '', phone: '', address_1: '', address_2: '', city: '', state: '', postcode: '', country: 'US', delivery_instructions: ''
   });
   
   const supabase = createClient();
@@ -57,13 +57,15 @@ export default function AddressesPage() {
             const legacyAddress = {
               id: Date.now().toString(),
               fullName: `${data.first_name || ''} ${data.last_name || ''}`.trim(),
+              email: data.email || '',
               phone: data.phone || '',
               address_1: data.address_1,
               address_2: data.address_2 || '',
               city: data.city || '',
               state: data.state || '',
               postcode: data.postcode || '',
-              country: data.country || 'US'
+              country: data.country || 'US',
+              delivery_instructions: ''
             };
             setAddresses([legacyAddress]);
           }
@@ -160,7 +162,7 @@ export default function AddressesPage() {
   };
 
   const openNewForm = () => {
-    setCurrentForm({ id: '', fullName: '', phone: '', address_1: '', address_2: '', city: '', state: '', postcode: '', country: 'US' });
+    setCurrentForm({ id: '', fullName: '', email: '', phone: '', address_1: '', address_2: '', city: '', state: '', postcode: '', country: 'US', delivery_instructions: '' });
     setEditingId(null);
     setIsEditing(true);
   };
@@ -242,47 +244,61 @@ export default function AddressesPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-ethoDark mb-2">Full Name</label>
-                <input type="text" name="fullName" value={currentForm.fullName} onChange={handleInputChange} placeholder="First and Last Name" className="w-full px-4 py-3 border border-gray-300 rounded focus:ring-2 focus:ring-haitiBlue focus:outline-none text-black" required />
+                <label className="block text-sm font-bold text-ethoDark mb-2">Full Name <span className="text-haitiRed">*</span></label>
+                <input type="text" name="fullName" value={currentForm.fullName} onChange={handleInputChange} placeholder="First and Last Name" className="w-full px-4 py-3 border border-gray-300 rounded focus:ring-2 focus:ring-haitiBlue focus:outline-none text-black placeholder-gray-400" required />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-bold text-ethoDark mb-1">Email Address <span className="text-haitiRed">*</span></label>
+                  <p className="text-xs text-gray-500 mb-2">For order updates.</p>
+                  <input type="email" name="email" value={currentForm.email} onChange={handleInputChange} placeholder="your@email.com" className="w-full px-4 py-3 border border-gray-300 rounded focus:ring-2 focus:ring-haitiBlue focus:outline-none text-black placeholder-gray-400" required />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-ethoDark mb-1">Phone Number <span className="text-haitiRed">*</span></label>
+                  <p className="text-xs text-gray-500 mb-2">For delivery issues.</p>
+                  <input type="tel" name="phone" value={currentForm.phone} onChange={handleInputChange} placeholder="(555) 555-5555" className="w-full px-4 py-3 border border-gray-300 rounded focus:ring-2 focus:ring-haitiBlue focus:outline-none text-black placeholder-gray-400" required />
+                </div>
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-ethoDark mb-1">Phone Number</label>
-                <p className="text-xs text-gray-500 mb-2">Required by shipping carriers for delivery issues.</p>
-                <input type="tel" name="phone" value={currentForm.phone} onChange={handleInputChange} className="w-full px-4 py-3 border border-gray-300 rounded focus:ring-2 focus:ring-haitiBlue focus:outline-none text-black" required />
-              </div>
-
-              <div>
-                <label className="block text-sm font-bold text-ethoDark mb-2">Street Address or P.O. Box</label>
+                <label className="block text-sm font-bold text-ethoDark mb-2">Address 1 <span className="text-haitiRed">*</span></label>
                 <input 
                   type="text" 
                   name="address_1" 
                   value={currentForm.address_1} 
                   onChange={handleInputChange} 
-                  placeholder="123 Main St" 
-                  className="w-full px-4 py-3 border border-gray-300 rounded focus:ring-2 focus:ring-haitiBlue focus:outline-none text-black" 
+                  placeholder="Street Address or P.O. Box" 
+                  className="w-full px-4 py-3 border border-gray-300 rounded focus:ring-2 focus:ring-haitiBlue focus:outline-none text-black placeholder-gray-400" 
                   required 
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-ethoDark mb-2">Apt, suite, unit, building, floor, etc. (Optional)</label>
-                <input type="text" name="address_2" value={currentForm.address_2} onChange={handleInputChange} placeholder="Apt 4B" className="w-full px-4 py-3 border border-gray-300 rounded focus:ring-2 focus:ring-haitiBlue focus:outline-none text-black" />
+                <label className="block text-sm font-bold text-ethoDark mb-2">Address 2 <span className="text-gray-400 font-normal">(Optional)</span></label>
+                <input 
+                  type="text" 
+                  name="address_2" 
+                  value={currentForm.address_2} 
+                  onChange={handleInputChange} 
+                  placeholder="Apt, suite, unit, building, floor, etc." 
+                  className="w-full px-4 py-3 border border-gray-300 rounded focus:ring-2 focus:ring-haitiBlue focus:outline-none text-black placeholder-gray-400" 
+                />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-bold text-ethoDark mb-2">City</label>
+                  <label className="block text-sm font-bold text-ethoDark mb-2">City <span className="text-haitiRed">*</span></label>
                   <input type="text" name="city" value={currentForm.city} onChange={handleInputChange} className="w-full px-4 py-3 border border-gray-300 rounded focus:ring-2 focus:ring-haitiBlue focus:outline-none text-black" required />
                 </div>
                 <div>
-                  <label className="block text-sm font-bold text-ethoDark mb-2">State / Province</label>
-                  <input type="text" name="state" value={currentForm.state} onChange={handleInputChange} placeholder="FL or NY" className="w-full px-4 py-3 border border-gray-300 rounded focus:ring-2 focus:ring-haitiBlue focus:outline-none text-black uppercase" required />
+                  <label className="block text-sm font-bold text-ethoDark mb-2">State / Province <span className="text-haitiRed">*</span></label>
+                  <input type="text" name="state" value={currentForm.state} onChange={handleInputChange} placeholder="FL or NY" className="w-full px-4 py-3 border border-gray-300 rounded focus:ring-2 focus:ring-haitiBlue focus:outline-none text-black uppercase placeholder-gray-400" required />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-ethoDark mb-2">ZIP / Postal Code</label>
+                <label className="block text-sm font-bold text-ethoDark mb-2">ZIP / Postal Code <span className="text-haitiRed">*</span></label>
                 <input 
                   type="text" 
                   name="postcode" 
@@ -291,6 +307,22 @@ export default function AddressesPage() {
                   className="w-full px-4 py-3 border border-gray-300 rounded focus:ring-2 focus:ring-haitiBlue focus:outline-none text-black" 
                   required 
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-ethoDark mb-2">Delivery Instructions <span className="text-gray-400 font-normal">(Optional)</span></label>
+                <textarea 
+                  name="delivery_instructions" 
+                  value={currentForm.delivery_instructions} 
+                  onChange={handleInputChange} 
+                  maxLength={500}
+                  rows={2}
+                  placeholder="Gate code, leave at back door, etc."
+                  className="w-full px-4 py-3 border border-gray-300 rounded focus:ring-2 focus:ring-haitiBlue focus:outline-none text-black placeholder-gray-400 resize-y min-h-[60px]" 
+                />
+                <div className="text-right text-xs text-gray-400 mt-1">
+                  {(currentForm.delivery_instructions || "").length} / 500
+                </div>
               </div>
 
               <hr className="border-gray-200 mt-6" />
@@ -326,7 +358,13 @@ export default function AddressesPage() {
                   <p>{addr.address_1}</p>
                   {addr.address_2 && <p>{addr.address_2}</p>}
                   <p>{addr.city}, {addr.state} {addr.postcode}</p>
-                  <p className="pt-2">Phone number: {addr.phone}</p>
+                  <p className="pt-2">Email: {addr.email}</p>
+                  <p>Phone: {addr.phone}</p>
+                  {addr.delivery_instructions && (
+                    <p className="pt-2 text-xs italic bg-gray-50 p-2 rounded mt-2 border border-gray-100">
+                      " {addr.delivery_instructions} "
+                    </p>
+                  )}
                 </div>
 
                 <div className="flex gap-4 border-t border-gray-100 pt-4 mt-auto">
