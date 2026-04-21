@@ -1,11 +1,10 @@
 "use client";
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuthStore } from '@/store/authStore';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase'; 
-import Script from 'next/script';
 
 export default function AddressesPage() {
   const { token, user } = useAuthStore();
@@ -28,11 +27,6 @@ export default function AddressesPage() {
   const [currentForm, setCurrentForm] = useState({
     id: '', fullName: '', phone: '', address_1: '', address_2: '', city: '', state: '', postcode: '', country: 'US'
   });
-  const [zipError, setZipError] = useState("");
-  
-  // Google Maps UI States
-  const [isLocked, setIsLocked] = useState(true); 
-  const addressInputRef = useRef(null);
   
   const supabase = createClient();
 
@@ -85,103 +79,18 @@ export default function AddressesPage() {
     fetchCustomerData();
   }, [token, user, router, supabase]);
 
-  // 2. Initialize Google Maps Autocomplete
-  const initAutocomplete = () => {
-    if (!window.google || !addressInputRef.current) return;
-    
-    const autocomplete = new window.google.maps.places.Autocomplete(addressInputRef.current, {
-      fields: ["address_components"],
-      types: ["address"],
-    });
-
-    autocomplete.addListener("place_changed", () => {
-      const place = autocomplete.getPlace();
-      if (!place.address_components) return;
-
-      let streetNumber = ''; let route = ''; let city = ''; let state = ''; let zip = ''; let country = 'US';
-
-      for (const component of place.address_components) {
-        const type = component.types[0];
-        if (type === 'street_number') streetNumber = component.long_name;
-        if (type === 'route') route = component.long_name;
-        if (type === 'locality' || type === 'sublocality_level_1') city = component.long_name;
-        if (type === 'administrative_area_level_1') state = component.short_name;
-        if (type === 'postal_code') zip = component.long_name;
-        if (type === 'country') country = component.short_name;
-      }
-
-      setCurrentForm(prev => ({
-        ...prev,
-        address_1: `${streetNumber} ${route}`.trim(),
-        city: city,
-        state: state,
-        postcode: zip,
-        country: country === 'US' || country === 'CA' ? country : 'US' // Restrict to US/CA
-      }));
-
-      setIsLocked(false);
-      setZipError(""); // Clear any previous zip errors
-    });
-  };
-
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setCurrentForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  // 3. The "Amazon-Style" ZIP Code Validator (Zippopotam.us)
-  const handleZipBlur = async () => {
-    const { postcode, country, state, city } = currentForm;
-    setZipError(""); // Reset error
-
-    if (!postcode || country !== 'US') return; // Zippopotam is most reliable for US
-
-    try {
-      const res = await fetch(`https://api.zippopotam.us/us/${postcode}`);
-      if (!res.ok) {
-        setZipError("Invalid ZIP Code format or not found.");
-        return;
-      }
-      const data = await res.json();
-      const apiState = data.places[0]['state abbreviation'];
-      
-      if (state && apiState.toLowerCase() !== state.toLowerCase()) {
-         setZipError(`Please enter a valid ZIP Code for ${city || 'this area'}, ${state}.`);
-      }
-    } catch (e) {
-      console.error("ZIP API failed, bypassing soft validation.");
-    }
-  };
-
-  // 4. Save Address
+  // 2. Save Address (Direct to Supabase, no external API checks)
   const handleSaveAddress = async (e) => {
     e.preventDefault();
-    if (zipError) return; // Block save if ZIP is clearly wrong
-    
     setSaving(true);
-    setMessage({ type: '', text: 'Validating address with Printify carrier...' });
-
-    // Split Full Name under the hood for Printify
-    const nameParts = currentForm.fullName.trim().split(' ');
-    const first_name = nameParts[0] || '';
-    const last_name = nameParts.slice(1).join(' ') || '';
-
-    const shippingPayload = {
-      first_name, last_name, ...currentForm
-    };
+    setMessage({ type: '', text: 'Saving address to profile...' });
 
     try {
-      // Printify Validation Ping
-      const validationRes = await fetch('/api/validate-address', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(shippingPayload)
-      });
-      const validationData = await validationRes.json();
-      if (!validationRes.ok) throw new Error(`${validationData.error}`);
-
-      setMessage({ type: '', text: 'Address verified! Saving to profile...' });
-
       // Create new list
       let updatedAddresses = [...addresses];
       const addressToSave = { ...currentForm, id: editingId || Date.now().toString() };
@@ -218,7 +127,7 @@ export default function AddressesPage() {
       
       setAddresses(updatedAddresses);
       setIsEditing(false); 
-      setMessage({ type: 'success', text: 'Address successfully verified and updated!' });
+      setMessage({ type: 'success', text: 'Address successfully saved!' });
       
     } catch (error) {
       console.error("Save Address Error:", error);
@@ -229,7 +138,7 @@ export default function AddressesPage() {
     }
   };
 
-  // 5. Delete Interactions
+  // 3. Delete Interactions
   const triggerDelete = (id) => {
     setAddressToDelete(id);
     setIsModalOpen(true);
@@ -253,16 +162,12 @@ export default function AddressesPage() {
   const openNewForm = () => {
     setCurrentForm({ id: '', fullName: '', phone: '', address_1: '', address_2: '', city: '', state: '', postcode: '', country: 'US' });
     setEditingId(null);
-    setIsLocked(true);
-    setZipError("");
     setIsEditing(true);
   };
 
   const openEditForm = (address) => {
     setCurrentForm(address);
     setEditingId(address.id);
-    setIsLocked(false); // Unlock immediately if editing
-    setZipError("");
     setIsEditing(true);
   };
 
@@ -277,11 +182,6 @@ export default function AddressesPage() {
 
   return (
     <main className="pt-32 pb-20 min-h-screen bg-ethoBg relative">
-      <Script 
-        src={`https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY}&libraries=places`} 
-        strategy="afterInteractive"
-        onLoad={initAutocomplete}
-      />
 
       {/* DELETE CONFIRMATION MODAL */}
       {isModalOpen && (
@@ -325,7 +225,7 @@ export default function AddressesPage() {
         )}
 
         {isEditing ? (
-          /* THE HIGHLY OPTIMIZED ADD/EDIT FORM */
+          /* THE CLEAN, SIMPLE ADD/EDIT FORM */
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
             <div className="p-6 border-b border-gray-200 bg-gray-50">
               <h2 className="text-xl font-bold text-ethoDark">{editingId ? 'Edit Address' : 'Add a New Address'}</h2>
@@ -352,65 +252,45 @@ export default function AddressesPage() {
                 <input type="tel" name="phone" value={currentForm.phone} onChange={handleInputChange} className="w-full px-4 py-3 border border-gray-300 rounded focus:ring-2 focus:ring-haitiBlue focus:outline-none text-black" required />
               </div>
 
-              {/* THE GOOGLE SMART SEARCH BAR */}
-              <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
-                <label className="block text-sm font-extrabold text-haitiBlue mb-2">Street address or P.O. Box</label>
+              <div>
+                <label className="block text-sm font-bold text-ethoDark mb-2">Street Address or P.O. Box</label>
                 <input 
                   type="text" 
-                  ref={addressInputRef}
                   name="address_1" 
                   value={currentForm.address_1} 
                   onChange={handleInputChange} 
-                  placeholder="Start typing your street address..." 
-                  className="w-full px-4 py-4 border-2 border-haitiBlue rounded shadow-sm focus:ring-2 focus:ring-haitiBlue focus:outline-none text-black font-bold text-lg" 
+                  placeholder="123 Main St" 
+                  className="w-full px-4 py-3 border border-gray-300 rounded focus:ring-2 focus:ring-haitiBlue focus:outline-none text-black" 
                   required 
                 />
-                
-                {isLocked && (
-                  <button type="button" onClick={() => setIsLocked(false)} className="text-sm font-bold text-gray-500 hover:text-ethoDark mt-3 underline">
-                    Enter address manually instead.
-                  </button>
-                )}
               </div>
 
-              {/* THE REVEALED SMART LOCALITY BLOCK */}
-              <div className={`transition-all duration-500 overflow-hidden ${isLocked ? 'max-h-0 opacity-0' : 'max-h-[1000px] opacity-100'}`}>
-                <div className="space-y-6">
-                  <div>
-                    <label className="block text-sm font-bold text-ethoDark mb-2">Apt, suite, unit, building, floor, etc. (Optional)</label>
-                    <input type="text" name="address_2" value={currentForm.address_2} onChange={handleInputChange} className="w-full px-4 py-3 border border-gray-300 rounded focus:ring-2 focus:ring-haitiBlue focus:outline-none text-black" />
-                  </div>
+              <div>
+                <label className="block text-sm font-bold text-ethoDark mb-2">Apt, suite, unit, building, floor, etc. (Optional)</label>
+                <input type="text" name="address_2" value={currentForm.address_2} onChange={handleInputChange} placeholder="Apt 4B" className="w-full px-4 py-3 border border-gray-300 rounded focus:ring-2 focus:ring-haitiBlue focus:outline-none text-black" />
+              </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-sm font-bold text-ethoDark mb-2">City</label>
-                      <input type="text" name="city" value={currentForm.city} onChange={handleInputChange} className="w-full px-4 py-3 border border-gray-300 rounded focus:ring-2 focus:ring-haitiBlue focus:outline-none text-black" required={!isLocked} />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-bold text-ethoDark mb-2">State / Province</label>
-                      <input type="text" name="state" value={currentForm.state} onChange={handleInputChange} placeholder="FL" maxLength={2} className="w-full px-4 py-3 border border-gray-300 rounded focus:ring-2 focus:ring-haitiBlue focus:outline-none text-black uppercase" required={!isLocked} />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-bold text-ethoDark mb-2">ZIP / Postal Code</label>
-                    <input 
-                      type="text" 
-                      name="postcode" 
-                      value={currentForm.postcode} 
-                      onChange={handleInputChange} 
-                      onBlur={handleZipBlur}
-                      className={`w-full px-4 py-3 border rounded focus:outline-none text-black transition-colors ${zipError ? 'border-red-500 focus:ring-2 focus:ring-red-500' : 'border-gray-300 focus:ring-2 focus:ring-haitiBlue'}`} 
-                      required={!isLocked} 
-                    />
-                    {zipError && (
-                      <p className="text-red-600 font-bold text-sm mt-2 flex items-center gap-1">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-                        {zipError} Add delivery instructions if this is a new construction.
-                      </p>
-                    )}
-                  </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-bold text-ethoDark mb-2">City</label>
+                  <input type="text" name="city" value={currentForm.city} onChange={handleInputChange} className="w-full px-4 py-3 border border-gray-300 rounded focus:ring-2 focus:ring-haitiBlue focus:outline-none text-black" required />
                 </div>
+                <div>
+                  <label className="block text-sm font-bold text-ethoDark mb-2">State / Province</label>
+                  <input type="text" name="state" value={currentForm.state} onChange={handleInputChange} placeholder="FL or NY" className="w-full px-4 py-3 border border-gray-300 rounded focus:ring-2 focus:ring-haitiBlue focus:outline-none text-black uppercase" required />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-ethoDark mb-2">ZIP / Postal Code</label>
+                <input 
+                  type="text" 
+                  name="postcode" 
+                  value={currentForm.postcode} 
+                  onChange={handleInputChange} 
+                  className="w-full px-4 py-3 border border-gray-300 rounded focus:ring-2 focus:ring-haitiBlue focus:outline-none text-black" 
+                  required 
+                />
               </div>
 
               <hr className="border-gray-200 mt-6" />
@@ -419,7 +299,7 @@ export default function AddressesPage() {
                 <button type="button" onClick={() => setIsEditing(false)} className="px-6 py-3 rounded font-extrabold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors">
                   Cancel
                 </button>
-                <button type="submit" disabled={saving || isLocked || !!zipError} className={`px-8 py-3 rounded font-extrabold text-white shadow-md transition-colors flex items-center gap-2 ${(saving || isLocked || !!zipError) ? 'bg-gray-400 cursor-not-allowed' : 'bg-haitiRed hover:bg-red-700'}`}>
+                <button type="submit" disabled={saving} className={`px-8 py-3 rounded font-extrabold text-white shadow-md transition-colors flex items-center gap-2 ${saving ? 'bg-gray-400 cursor-not-allowed' : 'bg-haitiRed hover:bg-red-700'}`}>
                   {saving ? (
                     <>
                       <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
