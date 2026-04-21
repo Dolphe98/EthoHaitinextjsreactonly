@@ -250,13 +250,13 @@ export default function AddressesPage() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-bold text-ethoDark mb-1">Email Address <span className="text-haitiRed">*</span></label>
+                  <label className="block text-sm font-bold text-ethoDark mb-1">Email Address <span className="text-gray-400 font-normal">(Optional)</span></label>
                   <p className="text-xs text-gray-500 mb-2">For order updates.</p>
-                  <input type="email" name="email" value={currentForm.email} onChange={handleInputChange} placeholder="your@email.com" className="w-full px-4 py-3 border border-gray-300 rounded focus:ring-2 focus:ring-haitiBlue focus:outline-none text-black placeholder-gray-400" required />
+                  <input type="email" name="email" value={currentForm.email} onChange={handleInputChange} placeholder="your@email.com" className="w-full px-4 py-3 border border-gray-300 rounded focus:ring-2 focus:ring-haitiBlue focus:outline-none text-black placeholder-gray-400" />
                 </div>
                 <div>
                   <label className="block text-sm font-bold text-ethoDark mb-1">Phone Number <span className="text-haitiRed">*</span></label>
-                  <p className="text-xs text-gray-500 mb-2">For delivery issues.</p>
+                  <p className="text-xs text-gray-500 mb-2">To ensure a smooth delivery experience.</p>
                   <input type="tel" name="phone" value={currentForm.phone} onChange={handleInputChange} placeholder="(555) 555-5555" className="w-full px-4 py-3 border border-gray-300 rounded focus:ring-2 focus:ring-haitiBlue focus:outline-none text-black placeholder-gray-400" required />
                 </div>
               </div>
@@ -358,8 +358,8 @@ export default function AddressesPage() {
                   <p>{addr.address_1}</p>
                   {addr.address_2 && <p>{addr.address_2}</p>}
                   <p>{addr.city}, {addr.state} {addr.postcode}</p>
-                  <p className="pt-2">Email: {addr.email}</p>
-                  <p>Phone: {addr.phone}</p>
+                  {addr.email && <p className="pt-2">Email: {addr.email}</p>}
+                  <p className={!addr.email ? "pt-2" : ""}>Phone: {addr.phone}</p>
                   {addr.delivery_instructions && (
                     <p className="pt-2 text-xs italic bg-gray-50 p-2 rounded mt-2 border border-gray-100">
                       " {addr.delivery_instructions} "
