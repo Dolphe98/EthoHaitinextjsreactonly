@@ -11,7 +11,7 @@ export async function POST(request) {
     }
 
     const printifyOrderId = payload.data.id;
-    const newStatus = payload.data.status; // e.g., 'processing', 'production', 'shipped'
+    const newStatus = payload.data.status; // e.g., 'processing', 'shipped'
     const shipments = payload.data.shipments || [];
 
     // 2. Initialize Supabase Admin (Bypasses RLS to safely update the database)
@@ -20,7 +20,7 @@ export async function POST(request) {
       process.env.SUPABASE_SERVICE_ROLE_KEY
     );
 
-    // 3. Fetch the existing order from your database to get the rich item data (images, names)
+    // 3. Fetch the existing order from your database to get the rich item data
     const { data: order, error: fetchError } = await supabaseAdmin
       .from('orders')
       .select('items')
@@ -33,17 +33,14 @@ export async function POST(request) {
     }
 
     // 4. The Split-Shipment Matcher
-    // Printify only sends boring IDs in their shipment array. We match those IDs 
-    // against your saved cart items so your UI can display the correct product images!
+    // Match Printify's boring item IDs to your actual cart items to keep the images/names intact
     let packages = [];
     
     if (shipments.length > 0 && Array.isArray(order.items)) {
       packages = shipments.map(shipment => {
         
-        // Find which of your saved cart items belong in this specific box
         const matchedItems = order.items.filter(cartItem => 
           shipment.line_items.some(sItem => 
-            // Matching either product ID or variant ID depending on how you saved it
             sItem.variant_id === cartItem.variationId || sItem.product_id === cartItem.id
           )
         );
@@ -62,7 +59,6 @@ export async function POST(request) {
     // 5. Update the Database!
     const updateData = { status: newStatus };
     
-    // Only overwrite the packages array if Printify actually sent tracking data
     if (packages.length > 0) {
       updateData.packages = packages;
     }
@@ -77,7 +73,7 @@ export async function POST(request) {
       return NextResponse.json({ error: "Failed to update database" }, { status: 500 });
     }
 
-    // 6. Tell Printify "Message Received!"
+    // 6. Respond OK so Printify knows we got it
     return NextResponse.json({ success: true, message: "Order updated successfully" }, { status: 200 });
 
   } catch (error) {
