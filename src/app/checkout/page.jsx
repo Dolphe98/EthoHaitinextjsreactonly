@@ -128,9 +128,16 @@ export default function CheckoutPage() {
       }
       setPaymentSuccess(data.orderID);
       clearCart();
+      
+      // THE NEW DYNAMIC REDIRECT
       setTimeout(() => {
-        router.push("/orders"); 
+        if (authUser?.id) {
+          router.push(`/orders/${data.orderID}`); 
+        } else {
+          router.push(`/orders/${data.orderID}?email=${encodeURIComponent(details.email)}`); 
+        }
       }, 3000);
+      
     } else {
       alert("Payment failed or was declined by PayPal.");
     }
@@ -150,7 +157,7 @@ export default function CheckoutPage() {
           <h1 className="text-3xl font-extrabold text-ethoDark mb-4">Payment Successful!</h1>
           <p className="text-gray-500 mb-8">Thank you for your order. We are processing it with Printify now.</p>
           <div className="animate-spin rounded-full h-8 w-8 border-4 border-gray-300 border-t-green-600 mx-auto"></div>
-          <p className="text-xs text-gray-400 mt-4">Redirecting to your dashboard...</p>
+          <p className="text-xs text-gray-400 mt-4">Taking you to your tracking page...</p>
         </div>
       </main>
     );

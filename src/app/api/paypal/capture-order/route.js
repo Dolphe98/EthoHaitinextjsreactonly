@@ -54,6 +54,9 @@ export async function POST(req) {
       const firstName = fullName[0];
       const lastName = fullName.slice(1).join(' ') || 'Customer';
 
+      // Capture the exact email used
+      const finalEmail = userEmail || payer.email_address;
+
       // B. Translate Cart Items to Printify's exact format
       const line_items = cart.map(item => ({
         product_id: item.id,
@@ -77,7 +80,7 @@ export async function POST(req) {
           address_to: {
             first_name: firstName,
             last_name: lastName,
-            email: userEmail || payer.email_address,
+            email: finalEmail,
             phone: "0000000000", // Required field, placeholder if blank
             country: shipping.address.country_code,
             region: shipping.address.admin_area_1 || '',
@@ -100,12 +103,24 @@ export async function POST(req) {
           total: data.purchase_units[0].payments.captures[0].amount.value,
           printify_order_id: printifyOrder.id || null,
           shipping_address: shipping.address,
-          items: cart
+          items: cart,
+          checkout_email: finalEmail // Save guest email for lookup
+        });
+      } else {
+        // Even for guests, we must save the order so they can look it up!
+        await supabase.from('orders').insert({
+          id: orderID,
+          status: 'processing',
+          total: data.purchase_units[0].payments.captures[0].amount.value,
+          printify_order_id: printifyOrder.id || null,
+          shipping_address: shipping.address,
+          items: cart,
+          checkout_email: finalEmail
         });
       }
 
-      // E. Return ultimate success to the frontend
-      return NextResponse.json({ status: "COMPLETED", orderID: orderID });
+      // Return the email to the frontend for the redirect
+      return NextResponse.json({ status: "COMPLETED", orderID: orderID, email: finalEmail });
     }
 
     // If payment failed, return the failure data
