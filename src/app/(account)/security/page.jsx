@@ -31,7 +31,6 @@ export default function SecurityPage() {
   const [passwords, setPasswords] = useState({ current: '', new: '', confirm: '' });
   const [showPassword, setShowPassword] = useState({ current: false, new: false, confirm: false });
 
-  // Custom Toast Function
   const showToast = (message, type = 'success') => {
     setToast({ show: true, message, type });
     setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 4000);
@@ -45,30 +44,46 @@ export default function SecurityPage() {
 
     async function fetchUserData() {
       try {
-        // 1. Get Auth Data to check provider and email
+        // 1. Get Auth Data
         const { data: { user: authUser } } = await supabase.auth.getUser();
+        let fallbackFirstName = '';
+        let fallbackLastName = '';
+
         if (authUser) {
           setEmail(authUser.email);
           if (authUser.app_metadata?.provider === 'google') {
             setIsGoogleAuth(true);
           }
+
+          // Extract names from Google or standard signup metadata
+          const meta = authUser.user_metadata || {};
+          fallbackFirstName = meta.first_name || '';
+          fallbackLastName = meta.last_name || '';
+          
+          // Google sometimes uses full_name or name instead
+          if (!fallbackFirstName && !fallbackLastName) {
+            const fullName = meta.full_name || meta.name || '';
+            const nameParts = fullName.trim().split(' ');
+            fallbackFirstName = nameParts[0] || '';
+            fallbackLastName = nameParts.slice(1).join(' ') || '';
+          }
         }
 
-        // 2. Get Profile Data
+        // 2. Get Profile Data (using maybeSingle so it doesn't crash if the row is missing)
         const { data: profileData } = await supabase
           .from('profiles')
           .select('first_name, last_name, phone, whatsapp')
           .eq('id', user.id)
-          .single();
+          .maybeSingle();
 
-        if (profileData) {
-          setProfile({
-            first_name: profileData.first_name || '',
-            last_name: profileData.last_name || '',
-            phone: profileData.phone || '',
-            whatsapp: profileData.whatsapp || ''
-          });
-        }
+        // Merge database data with auth metadata fallback
+        setProfile({
+          first_name: profileData?.first_name || fallbackFirstName,
+          last_name: profileData?.last_name || fallbackLastName,
+          phone: profileData?.phone || authUser?.user_metadata?.phone || '',
+          whatsapp: profileData?.whatsapp || authUser?.user_metadata?.whatsapp || ''
+        });
+
       } catch (error) {
         console.error("Failed to fetch profile:", error);
         showToast("Failed to load profile data.", "error");
@@ -81,24 +96,34 @@ export default function SecurityPage() {
   }, [token, user, router, supabase]);
 
   // ==========================================
-  // CARD 1: SAVE PROFILE
+  // CARD 1: SAVE PROFILE (Using UPSERT)
   // ==========================================
   const handleSaveProfile = async (e) => {
     e.preventDefault();
     setSavingProfile(true);
 
     try {
+      // 1. UPSERT the profile table (Updates if exists, Inserts if missing)
       const { error } = await supabase
         .from('profiles')
-        .update({
+        .upsert({
+          id: user.id, // Mandatory for upsert
           first_name: profile.first_name,
           last_name: profile.last_name,
           phone: profile.phone,
           whatsapp: profile.whatsapp
-        })
-        .eq('id', user.id);
+        });
 
       if (error) throw error;
+
+      // 2. Also update the hidden Auth Metadata so the Header instantly reflects changes
+      await supabase.auth.updateUser({
+        data: {
+          first_name: profile.first_name,
+          last_name: profile.last_name
+        }
+      });
+
       showToast("Personal information updated successfully.");
     } catch (error) {
       showToast(error.message || "Failed to update profile.", "error");
@@ -126,17 +151,13 @@ export default function SecurityPage() {
     setSavingPassword(true);
 
     try {
-      // STRICT SECURITY CHECK: Attempt to "Login" behind the scenes with the current password
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email: email,
         password: passwords.current,
       });
 
-      if (signInError) {
-        throw new Error("Your current password is incorrect.");
-      }
+      if (signInError) throw new Error("Your current password is incorrect.");
 
-      // If that succeeded, they are verified. Now update the password.
       const { error: updateError } = await supabase.auth.updateUser({
         password: passwords.new
       });
@@ -157,10 +178,10 @@ export default function SecurityPage() {
   const getPasswordStrength = (pw) => {
     if (!pw) return 0;
     let s = 0;
-    if (pw.length >= 8) s += 1; // Length
-    if (/[A-Z]/.test(pw)) s += 1; // Uppercase
-    if (/[0-9]/.test(pw)) s += 1; // Number
-    if (/[^A-Za-z0-9]/.test(pw)) s += 1; // Special Char
+    if (pw.length >= 8) s += 1; 
+    if (/[A-Z]/.test(pw)) s += 1; 
+    if (/[0-9]/.test(pw)) s += 1; 
+    if (/[^A-Za-z0-9]/.test(pw)) s += 1; 
     return s;
   };
   const pwStrength = getPasswordStrength(passwords.new);
