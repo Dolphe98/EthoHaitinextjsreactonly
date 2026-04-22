@@ -32,8 +32,15 @@ export default function OrderDetailsPage() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ orderId: id, email: emailParam })
           });
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.error);
+          
+          let data;
+          try {
+            data = await res.json();
+          } catch (e) {
+            throw new Error("Tracking system is currently updating. Please try again in a moment.");
+          }
+
+          if (!res.ok) throw new Error(data.error || "Order not found");
           setOrder(data.order);
         } else {
           // LOGGED-IN OWNER FLOW (Direct Supabase ping)
@@ -120,7 +127,14 @@ export default function OrderDetailsPage() {
         <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-6 gap-4">
           <div>
             <h1 className="text-3xl font-extrabold text-ethoDark">Order #{order.id.substring(0, 8).toUpperCase()}</h1>
-            <p className="text-gray-500 mt-1">Placed on {new Date(order.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+            {/* THE SUCCESS MESSAGE */}
+            {currentStep <= 2 && (
+              <p className="text-green-600 font-bold mt-2 flex items-center gap-1">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg>
+                Thank you for your order! Your gear is in progress.
+              </p>
+            )}
+            <p className="text-gray-500 mt-2">Placed on {new Date(order.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
           </div>
           {isGuest && (
              <span className="bg-yellow-100 text-yellow-800 text-xs font-bold px-3 py-1 rounded-full w-max">Guest View</span>
@@ -138,40 +152,34 @@ export default function OrderDetailsPage() {
           </div>
         )}
 
-        {/* Global Timeline (If not split, or overarching status) */}
+        {/* Global Timeline */}
         {!hasSplitShipment && (
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 md:p-8 mb-8">
             <div className="flex items-center justify-between mb-8 relative">
-              {/* Progress Line */}
               <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-1 bg-gray-100 z-0"></div>
               <div className="absolute left-0 top-1/2 -translate-y-1/2 h-1 bg-haitiBlue z-0 transition-all duration-500" style={{ width: `${((currentStep - 1) / 3) * 100}%` }}></div>
 
-              {/* Step 1 */}
               <div className="relative z-10 flex flex-col items-center gap-2 bg-white px-2">
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${currentStep >= 1 ? 'bg-haitiBlue text-white shadow-md' : 'bg-gray-100 text-gray-400'}`}>1</div>
                 <span className={`text-xs font-bold hidden sm:block ${currentStep >= 1 ? 'text-ethoDark' : 'text-gray-400'}`}>Placed</span>
               </div>
               
-              {/* Step 2 */}
               <div className="relative z-10 flex flex-col items-center gap-2 bg-white px-2">
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${currentStep >= 2 ? 'bg-haitiBlue text-white shadow-md' : 'bg-gray-100 text-gray-400'}`}>2</div>
                 <span className={`text-xs font-bold hidden sm:block ${currentStep >= 2 ? 'text-ethoDark' : 'text-gray-400'}`}>Production</span>
               </div>
 
-              {/* Step 3 */}
               <div className="relative z-10 flex flex-col items-center gap-2 bg-white px-2">
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${currentStep >= 3 ? 'bg-haitiBlue text-white shadow-md' : 'bg-gray-100 text-gray-400'}`}>3</div>
                 <span className={`text-xs font-bold hidden sm:block ${currentStep >= 3 ? 'text-ethoDark' : 'text-gray-400'}`}>Shipped</span>
               </div>
 
-              {/* Step 4 */}
               <div className="relative z-10 flex flex-col items-center gap-2 bg-white px-2">
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${currentStep >= 4 ? 'bg-haitiBlue text-white shadow-md' : 'bg-gray-100 text-gray-400'}`}>✓</div>
                 <span className={`text-xs font-bold hidden sm:block ${currentStep >= 4 ? 'text-ethoDark' : 'text-gray-400'}`}>Delivered</span>
               </div>
             </div>
 
-            {/* Tracking Button for Single Shipments */}
             {currentStep >= 3 && packages[0]?.url && (
               <a href={packages[0].url} target="_blank" rel="noopener noreferrer" className="w-full block text-center bg-haitiBlue hover:bg-blue-800 text-white font-extrabold py-4 px-4 rounded-lg shadow-md transition-colors text-lg">
                 Track Package
@@ -207,7 +215,6 @@ export default function OrderDetailsPage() {
                   ))}
                 </div>
 
-                {/* Specific Package Tracking Button */}
                 {pkg.url ? (
                    <div className="p-4 bg-gray-50 border-t border-gray-100">
                      <a href={pkg.url} target="_blank" rel="noopener noreferrer" className="w-full block text-center bg-white border-2 border-haitiBlue text-haitiBlue hover:bg-haitiBlue hover:text-white font-extrabold py-2 px-4 rounded transition-colors text-sm">
@@ -222,7 +229,6 @@ export default function OrderDetailsPage() {
               </div>
             ))
           ) : (
-            /* Default View (No Packages generated yet) */
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                <div className="p-4 sm:p-6 border-b border-gray-100 bg-gray-50">
                   <h2 className="font-extrabold text-lg text-ethoDark">Items in Order</h2>
@@ -245,10 +251,7 @@ export default function OrderDetailsPage() {
           )}
         </div>
 
-        {/* Order Details Footer Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          
-          {/* Shipping Address */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <h3 className="font-bold text-ethoDark mb-4 border-b border-gray-100 pb-2">Shipping Address</h3>
             {isGuest ? (
@@ -267,7 +270,6 @@ export default function OrderDetailsPage() {
             )}
           </div>
 
-          {/* Order Summary */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
              <h3 className="font-bold text-ethoDark mb-4 border-b border-gray-100 pb-2">Order Summary</h3>
              <div className="space-y-3 text-sm">
@@ -287,7 +289,6 @@ export default function OrderDetailsPage() {
           </div>
         </div>
 
-        {/* Help Footer */}
         <div className="mt-12 text-center text-sm text-gray-500 border-t border-gray-200 pt-8">
           <p>Need help with this order?</p>
           <Link href="/support" className="text-haitiBlue font-bold hover:underline mt-1 inline-block">Contact Customer Support</Link>

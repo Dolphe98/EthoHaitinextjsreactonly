@@ -23,9 +23,9 @@ export default function CheckoutPage() {
   const [realShipping, setRealShipping] = useState(null);
   const [loadingShipping, setLoadingShipping] = useState(false);
 
-  // Guest Form State
+  // Guest Form State (Added Phone)
   const [guestForm, setGuestForm] = useState({
-    first_name: '', last_name: '', email: '', address_1: '', city: '', state: '', postcode: '', country: 'US'
+    first_name: '', last_name: '', email: '', phone: '', address_1: '', city: '', state: '', postcode: '', country: 'US'
   });
 
   const subtotal = cart.reduce((total, item) => total + (Number(item.price || 0) * item.quantity), 0);
@@ -48,7 +48,6 @@ export default function CheckoutPage() {
           .eq('id', user.id)
           .single();
 
-        // Check the address_book first, fallback to flat address
         if (data?.address_book && data.address_book.length > 0) {
           setAddress(data.address_book[0]);
         } else if (data && data.address_1) {
@@ -114,7 +113,6 @@ export default function CheckoutPage() {
     const authStorage = JSON.parse(localStorage.getItem('ethohaiti-auth') || '{}');
     const authUser = authStorage?.state?.user;
 
-    // If guest, grab the email they typed in the inline form
     const finalEmail = authUser?.email || address?.email || null;
 
     const res = await fetch("/api/paypal/capture-order", {
@@ -150,10 +148,9 @@ export default function CheckoutPage() {
     }
   };
 
-  // Guest Form Submit
   const handleGuestSubmit = (e) => {
     e.preventDefault();
-    setAddress(guestForm); // Moves them to the payment phase!
+    setAddress(guestForm);
   };
 
   const handleGuestChange = (e) => {
@@ -248,7 +245,6 @@ export default function CheckoutPage() {
               ) : !address ? (
                 
                 user?.id ? (
-                  /* LOGGED IN, BUT NO ADDRESS SAVED */
                   <div className="bg-white p-8 rounded-xl shadow-sm border-2 border-haitiRed text-center">
                     <div className="bg-red-50 p-4 rounded-full inline-block mb-4">
                       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8 text-haitiRed"><path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" /></svg>
@@ -260,7 +256,6 @@ export default function CheckoutPage() {
                     </Link>
                   </div>
                 ) : (
-                  /* GUEST CHECKOUT FORM */
                   <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-200">
                     <div className="flex justify-between items-center mb-6 border-b border-gray-100 pb-4">
                       <h2 className="text-xl font-bold text-ethoDark">Guest Checkout</h2>
@@ -277,10 +272,17 @@ export default function CheckoutPage() {
                           <input type="text" name="last_name" required value={guestForm.last_name} onChange={handleGuestChange} className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-haitiBlue text-sm text-black" />
                         </div>
                       </div>
+                      
+                      {/* EMAIL OPTIONAL, PHONE MANDATORY */}
                       <div>
                         <label className="block text-xs font-bold text-gray-500 mb-1">Email (For order tracking)</label>
-                        <input type="email" name="email" required value={guestForm.email} onChange={handleGuestChange} className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-haitiBlue text-sm text-black" />
+                        <input type="email" name="email" value={guestForm.email} onChange={handleGuestChange} className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-haitiBlue text-sm text-black" />
                       </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-500 mb-1">Phone Number</label>
+                        <input type="tel" name="phone" required value={guestForm.phone} onChange={handleGuestChange} className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-haitiBlue text-sm text-black" />
+                      </div>
+                      
                       <div>
                         <label className="block text-xs font-bold text-gray-500 mb-1">Street Address</label>
                         <input type="text" name="address_1" required value={guestForm.address_1} onChange={handleGuestChange} className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-haitiBlue text-sm text-black" />
@@ -308,7 +310,6 @@ export default function CheckoutPage() {
 
               ) : (
 
-                /* PAYMENT GATEWAY (Address is Verified) */
                 <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-200">
                   <div className="mb-6 flex justify-between items-start bg-gray-50 p-4 rounded border border-gray-100">
                     <div>
