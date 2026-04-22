@@ -10,17 +10,33 @@ export async function POST(request) {
       return NextResponse.json({ error: "Invalid payload format" }, { status: 400 });
     }
 
+    const eventType = payload.type; // e.g., 'order:canceled', 'order:sent-to-production', 'order:shipment:created'
     const printifyOrderId = payload.data.id;
-    const newStatus = payload.data.status; // e.g., 'processing', 'shipped'
     const shipments = payload.data.shipments || [];
 
-    // 2. Initialize Supabase Admin (Bypasses RLS to safely update the database)
+    // 2. Determine our frontend status based on Printify's exact event signal
+    let newStatus = 'processing'; // default fallback
+    
+    if (eventType === 'order:sent-to-production') {
+      newStatus = 'in production';
+    } else if (eventType === 'order:canceled' || payload.data.status === 'canceled') {
+      newStatus = 'cancelled';
+    } else if (eventType === 'order:shipment:delivered') {
+      newStatus = 'delivered';
+    } else if (eventType === 'order:shipment:created' || payload.data.status === 'shipped') {
+      newStatus = 'shipped';
+    } else {
+      // If it's a general update, safely normalize Printify's text
+      newStatus = payload.data.status === 'canceled' ? 'cancelled' : payload.data.status;
+    }
+
+    // 3. Initialize Supabase Admin (Bypasses RLS to safely update the database)
     const supabaseAdmin = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL,
       process.env.SUPABASE_SERVICE_ROLE_KEY
     );
 
-    // 3. Fetch the existing order from your database to get the rich item data
+    // 4. Fetch the existing order from your database to get the rich item data
     const { data: order, error: fetchError } = await supabaseAdmin
       .from('orders')
       .select('items')
@@ -32,7 +48,7 @@ export async function POST(request) {
       return NextResponse.json({ error: "Order not found" }, { status: 404 });
     }
 
-    // 4. The Split-Shipment Matcher
+    // 5. The Split-Shipment Matcher
     // Match Printify's boring item IDs to your actual cart items to keep the images/names intact
     let packages = [];
     
@@ -45,18 +61,22 @@ export async function POST(request) {
           )
         );
 
+        // Dynamically flag the specific package as delivered if Printify provides a delivery timestamp
+        const pkgStatus = shipment.delivered_at ? 'delivered' : 'shipped';
+
         return {
-          status: 'shipped',
+          status: pkgStatus,
           carrier: shipment.carrier,
           tracking_number: shipment.number,
           url: shipment.url,
-          shipped_at: shipment.shipped_at,
+          shipped_at: shipment.shipped_at || null,
+          delivered_at: shipment.delivered_at || null,
           items: matchedItems.length > 0 ? matchedItems : shipment.line_items // Fallback
         };
       });
     }
 
-    // 5. Update the Database!
+    // 6. Update the Database!
     const updateData = { status: newStatus };
     
     if (packages.length > 0) {
@@ -73,8 +93,8 @@ export async function POST(request) {
       return NextResponse.json({ error: "Failed to update database" }, { status: 500 });
     }
 
-    // 6. Respond OK so Printify knows we got it
-    return NextResponse.json({ success: true, message: "Order updated successfully" }, { status: 200 });
+    // 7. Respond OK so Printify knows we got it
+    return NextResponse.json({ success: true, message: `Handled ${eventType} successfully` }, { status: 200 });
 
   } catch (error) {
     console.error("Printify Webhook Error:", error);
