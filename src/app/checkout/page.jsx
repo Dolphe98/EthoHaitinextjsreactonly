@@ -18,15 +18,18 @@ export default function CheckoutPage() {
   const [mounted, setMounted] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(null);
   
-  // New States for the "Vault Door" & Shipping Logic
   const [address, setAddress] = useState(null);
   const [loadingAddress, setLoadingAddress] = useState(true);
   const [realShipping, setRealShipping] = useState(null);
   const [loadingShipping, setLoadingShipping] = useState(false);
 
-  // Subtotal is now the FINAL total since shipping is free
+  // Guest Form State
+  const [guestForm, setGuestForm] = useState({
+    first_name: '', last_name: '', email: '', address_1: '', city: '', state: '', postcode: '', country: 'US'
+  });
+
   const subtotal = cart.reduce((total, item) => total + (Number(item.price || 0) * item.quantity), 0);
-  const total = subtotal; // Zero added for shipping/taxes
+  const total = subtotal; 
 
   useEffect(() => {
     setMounted(true);
@@ -35,7 +38,7 @@ export default function CheckoutPage() {
     }
   }, [cart.length, router, paymentSuccess]);
 
-  // 1. Fetch Verified Address on Load
+  // 1. Fetch Address (Or Stop if Guest)
   useEffect(() => {
     async function fetchAddress() {
       if (user?.id) {
@@ -45,7 +48,10 @@ export default function CheckoutPage() {
           .eq('id', user.id)
           .single();
 
-        if (data && data.address_1) {
+        // Check the address_book first, fallback to flat address
+        if (data?.address_book && data.address_book.length > 0) {
+          setAddress(data.address_book[0]);
+        } else if (data && data.address_1) {
           setAddress(data);
         }
       }
@@ -54,7 +60,7 @@ export default function CheckoutPage() {
     fetchAddress();
   }, [user, supabase]);
 
-  // 2. Fetch the "Real" Shipping Cost to Strike Through
+  // 2. Fetch Shipping Cost
   useEffect(() => {
     async function getShippingCost() {
       if (address && cart.length > 0) {
@@ -79,8 +85,6 @@ export default function CheckoutPage() {
     getShippingCost();
   }, [address, cart]);
 
-
-  // THE GOAFFPRO CONVERSION TRIGGER
   useEffect(() => {
     if (paymentSuccess && typeof window !== 'undefined' && window.goaffproTrackConversion) {
       window.goaffproTrackConversion({
@@ -100,7 +104,7 @@ export default function CheckoutPage() {
     const res = await fetch("/api/paypal/create-order", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ total }), // Only charging the subtotal!
+      body: JSON.stringify({ total }), 
     });
     const order = await res.json();
     return order.id;
@@ -110,6 +114,9 @@ export default function CheckoutPage() {
     const authStorage = JSON.parse(localStorage.getItem('ethohaiti-auth') || '{}');
     const authUser = authStorage?.state?.user;
 
+    // If guest, grab the email they typed in the inline form
+    const finalEmail = authUser?.email || address?.email || null;
+
     const res = await fetch("/api/paypal/capture-order", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -117,9 +124,10 @@ export default function CheckoutPage() {
         orderID: data.orderID,
         cart: cart, 
         userId: authUser?.id || null,
-        userEmail: authUser?.email || null
+        userEmail: finalEmail
       }),
     });
+    
     const details = await res.json();
 
     if (details.status === "COMPLETED") {
@@ -129,18 +137,27 @@ export default function CheckoutPage() {
       setPaymentSuccess(data.orderID);
       clearCart();
       
-      // THE NEW DYNAMIC REDIRECT
       setTimeout(() => {
         if (authUser?.id) {
           router.push(`/orders/${data.orderID}`); 
         } else {
-          router.push(`/orders/${data.orderID}?email=${encodeURIComponent(details.email)}`); 
+          router.push(`/orders/${data.orderID}?email=${encodeURIComponent(details.email || finalEmail)}`); 
         }
       }, 3000);
       
     } else {
       alert("Payment failed or was declined by PayPal.");
     }
+  };
+
+  // Guest Form Submit
+  const handleGuestSubmit = (e) => {
+    e.preventDefault();
+    setAddress(guestForm); // Moves them to the payment phase!
+  };
+
+  const handleGuestChange = (e) => {
+    setGuestForm({ ...guestForm, [e.target.name]: e.target.value });
   };
 
   if (!mounted) return <div className="pt-32 min-h-screen bg-ethoBg"></div>;
@@ -198,7 +215,6 @@ export default function CheckoutPage() {
                   <span className="font-bold text-ethoDark">{formatPrice(subtotal)}</span>
                 </div>
                 
-                {/* THE PSYCHOLOGICAL SHIPPING TRICK */}
                 <div className="flex justify-between items-center text-gray-600">
                   <span>Shipping</span>
                   <div>
@@ -222,7 +238,7 @@ export default function CheckoutPage() {
               </div>
             </div>
 
-            {/* Right Column - Payment & Shipping Gateway */}
+            {/* Right Column - Dynamic Gateway */}
             <div className="flex flex-col gap-6">
               
               {loadingAddress ? (
@@ -231,30 +247,79 @@ export default function CheckoutPage() {
                 </div>
               ) : !address ? (
                 
-                /* THE VAULT DOOR: Block Payment if No Address */
-                <div className="bg-white p-8 rounded-xl shadow-sm border-2 border-haitiRed text-center">
-                  <div className="bg-red-50 p-4 rounded-full inline-block mb-4">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8 text-haitiRed">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" />
-                    </svg>
+                user?.id ? (
+                  /* LOGGED IN, BUT NO ADDRESS SAVED */
+                  <div className="bg-white p-8 rounded-xl shadow-sm border-2 border-haitiRed text-center">
+                    <div className="bg-red-50 p-4 rounded-full inline-block mb-4">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8 text-haitiRed"><path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" /></svg>
+                    </div>
+                    <h2 className="text-xl font-bold text-ethoDark mb-2">Missing Shipping Address</h2>
+                    <p className="text-sm text-gray-500 mb-6">You must provide a valid delivery address to calculate shipping.</p>
+                    <Link href="/addresses" className="w-full block bg-haitiRed hover:bg-red-700 text-white font-extrabold py-3 px-4 rounded shadow-md transition-colors">
+                      Add Shipping Address
+                    </Link>
                   </div>
-                  <h2 className="text-xl font-bold text-ethoDark mb-2">Missing Shipping Address</h2>
-                  <p className="text-sm text-gray-500 mb-6">You must provide a valid delivery address before you can securely checkout.</p>
-                  <Link href="/addresses" className="w-full block bg-haitiRed hover:bg-red-700 text-white font-extrabold py-3 px-4 rounded shadow-md transition-colors">
-                    Add Shipping Address
-                  </Link>
-                </div>
+                ) : (
+                  /* GUEST CHECKOUT FORM */
+                  <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-200">
+                    <div className="flex justify-between items-center mb-6 border-b border-gray-100 pb-4">
+                      <h2 className="text-xl font-bold text-ethoDark">Guest Checkout</h2>
+                      <Link href="/account" className="text-sm font-bold text-haitiBlue hover:underline">Log in instead</Link>
+                    </div>
+                    <form onSubmit={handleGuestSubmit} className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-bold text-gray-500 mb-1">First Name</label>
+                          <input type="text" name="first_name" required value={guestForm.first_name} onChange={handleGuestChange} className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-haitiBlue text-sm text-black" />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-gray-500 mb-1">Last Name</label>
+                          <input type="text" name="last_name" required value={guestForm.last_name} onChange={handleGuestChange} className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-haitiBlue text-sm text-black" />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-500 mb-1">Email (For order tracking)</label>
+                        <input type="email" name="email" required value={guestForm.email} onChange={handleGuestChange} className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-haitiBlue text-sm text-black" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-500 mb-1">Street Address</label>
+                        <input type="text" name="address_1" required value={guestForm.address_1} onChange={handleGuestChange} className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-haitiBlue text-sm text-black" />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-bold text-gray-500 mb-1">City</label>
+                          <input type="text" name="city" required value={guestForm.city} onChange={handleGuestChange} className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-haitiBlue text-sm text-black" />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-gray-500 mb-1">State (e.g. FL, NY)</label>
+                          <input type="text" name="state" required maxLength="2" value={guestForm.state} onChange={handleGuestChange} className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-haitiBlue text-sm text-black uppercase" />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-500 mb-1">ZIP Code</label>
+                        <input type="text" name="postcode" required value={guestForm.postcode} onChange={handleGuestChange} className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-haitiBlue text-sm text-black" />
+                      </div>
+                      <button type="submit" className="w-full bg-ethoDark hover:bg-black text-white font-extrabold py-3 rounded mt-2 transition-colors">
+                        Continue to Payment
+                      </button>
+                    </form>
+                  </div>
+                )
 
               ) : (
 
                 /* PAYMENT GATEWAY (Address is Verified) */
                 <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-200">
-                  <div className="mb-6 bg-gray-50 p-4 rounded border border-gray-100">
-                    <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-2">Shipping To:</h3>
-                    <p className="font-bold text-ethoDark">{address.first_name} {address.last_name}</p>
-                    <p className="text-sm text-gray-600">{address.address_1}</p>
-                    <p className="text-sm text-gray-600">{address.city}, {address.state} {address.postcode}</p>
+                  <div className="mb-6 flex justify-between items-start bg-gray-50 p-4 rounded border border-gray-100">
+                    <div>
+                      <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-2">Shipping To:</h3>
+                      <p className="font-bold text-ethoDark">{address.fullName || `${address.first_name} ${address.last_name}`}</p>
+                      <p className="text-sm text-gray-600">{address.address_1}</p>
+                      <p className="text-sm text-gray-600">{address.city}, {address.state} {address.postcode}</p>
+                    </div>
+                    {!user?.id && (
+                       <button onClick={() => setAddress(null)} className="text-xs font-bold text-haitiBlue hover:underline">Edit</button>
+                    )}
                   </div>
 
                   <h2 className="text-xl font-bold text-ethoDark mb-2">Payment</h2>
