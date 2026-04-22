@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useAuthStore } from '@/store/authStore';
 import { createClient } from '@/lib/supabase';
+import Link from 'next/link';
 
 import 'react-phone-number-input/style.css';
 import PhoneInput from 'react-phone-number-input';
@@ -249,6 +250,11 @@ export default function AuthBridge() {
         </div>
         
         <div>
+          {isLogin && (
+            <Link href="/forgot-password" className="text-sm font-bold text-haitiBlue hover:underline float-right">
+              Forgot Password?
+            </Link>
+          )}
           <label className="block text-sm font-bold text-ethoDark mb-1">
             {isLogin ? "Password" : "New Password"} <span className="text-haitiRed">*</span>
           </label>
