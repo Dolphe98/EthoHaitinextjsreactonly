@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { fetchAllCategories, fetchProductsByCategory } from '@/services/products'; 
+import ProductCard from '@/components/product/ProductCard';
 
 export const dynamic = 'force-dynamic';
 
@@ -109,21 +110,7 @@ export default async function CategoryPage({ params }) {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
             {products.map(product => (
-              <Link href={`/product/${product.slug}`} key={product.id} className="bg-white rounded-lg shadow hover:shadow-2xl transition-all duration-300 overflow-hidden group flex flex-col">
-                <div className="relative h-80 bg-gray-100 flex items-center justify-center p-4">
-                   <img 
-                     src={product.images[0]?.src || "https://placehold.co/500x500?text=No+Image"} 
-                     alt={product.name} 
-                     className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-500"
-                   />
-                </div>
-                <div className="p-6 flex flex-col flex-grow text-center">
-                  <h2 className="text-xl font-bold text-gray-900 mb-2">
-                    {product.name.replace(/&#8217;/g, "'").replace(/&#8216;/g, "'")}
-                  </h2>
-                  <span className="text-haitiBlue font-extrabold text-lg" dangerouslySetInnerHTML={{ __html: product.price_html }}></span>
-                </div>
-              </Link>
+              <ProductCard key={product.id} product={product} />
             ))}
           </div>
         )}

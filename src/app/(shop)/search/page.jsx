@@ -3,7 +3,8 @@
 import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { fetchSearchResults, fetchAllProducts } from '@/services/products'; // NEW ENGINE IMPORT
+import { fetchSearchResults, fetchAllProducts } from '@/services/products'; 
+import ProductCard from '@/components/product/ProductCard';
 
 function SearchContent() {
   const searchParams = useSearchParams();
@@ -77,28 +78,7 @@ function SearchContent() {
             ) : products.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 {products.map((product) => (
-                  <Link 
-                    href={`/product/${product.slug}`} 
-                    key={product.id} 
-                    className="bg-white rounded-lg shadow hover:shadow-2xl transition-all duration-300 overflow-hidden group flex flex-col"
-                  >
-                    <div className="relative h-72 bg-gray-100 flex items-center justify-center p-4">
-                      <img 
-                        src={product.images?.[0]?.src || "https://placehold.co/500x500?text=No+Image"} 
-                        alt={product.name} 
-                        className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-500"
-                      />
-                    </div>
-                    <div className="p-6 flex flex-col flex-grow text-center">
-                      <h3 className="text-lg font-bold text-gray-900 mb-2">
-                        {product.name?.replace(/&#8217;/g, "'").replace(/&#8216;/g, "'").replace(/&amp;/g, "&").replace(/&#038;/g, "&")}
-                      </h3>
-                      <span 
-                        className="text-haitiBlue font-extrabold" 
-                        dangerouslySetInnerHTML={{ __html: product.price_html || "" }}
-                      ></span>
-                    </div>
-                  </Link>
+                  <ProductCard key={product.id} product={product} />
                 ))}
               </div>
             ) : (
@@ -121,28 +101,7 @@ function SearchContent() {
                     </h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 text-left">
                       {suggestions.map((product) => (
-                        <Link 
-                          href={`/product/${product.slug}`} 
-                          key={`suggestion-${product.id}`} 
-                          className="bg-white rounded-lg shadow hover:shadow-2xl transition-all duration-300 overflow-hidden group flex flex-col"
-                        >
-                          <div className="relative h-72 bg-gray-100 flex items-center justify-center p-4">
-                            <img 
-                              src={product.images?.[0]?.src || "https://placehold.co/500x500?text=No+Image"} 
-                              alt={product.name} 
-                              className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-500"
-                            />
-                          </div>
-                          <div className="p-6 flex flex-col flex-grow text-center">
-                            <h3 className="text-lg font-bold text-gray-900 mb-2">
-                              {product.name?.replace(/&#8217;/g, "'").replace(/&#8216;/g, "'").replace(/&amp;/g, "&").replace(/&#038;/g, "&")}
-                            </h3>
-                            <span 
-                              className="text-haitiBlue font-extrabold" 
-                              dangerouslySetInnerHTML={{ __html: product.price_html ? product.price_html.split(/&ndash;|-/)[0].trim() : "" }}
-                            ></span>
-                          </div>
-                        </Link>
+                        <ProductCard key={`suggestion-${product.id}`} product={product} />
                       ))}
                     </div>
                   </div>
