@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useCartStore } from '@/store/cartStore';
 import { useSearchParams, useRouter } from 'next/navigation';
+import Image from 'next/image';
 
 export default function ProductInteractive({ product }) {
   const router = useRouter();
@@ -10,7 +11,7 @@ export default function ProductInteractive({ product }) {
   const editCartItemId = searchParams.get('editCartItem');
 
   const cleanName = product.name?.replace(/&#8217;/g, "'").replace(/&#8216;/g, "'").replace(/&amp;/g, "&").replace(/&#038;/g, "&") || "Product";
-  const [activeImg, setActiveImg] = useState(product.images?.[0]?.src || "https://placehold.co/800x800?text=No+Image");
+  const [activeImg, setActiveImg] = useState(product.images?.[0]?.src || "https://placehold.co/800x800.png?text=No+Image");
   const [zoomOrigin, setZoomOrigin] = useState("50% 50%");
   const [isZoomed, setIsZoomed] = useState(false);
   
@@ -250,31 +251,47 @@ export default function ProductInteractive({ product }) {
         
         {/* LEFT COLUMN: THE GALLERY */}
         <div className="flex flex-col gap-4">
+          
+          {/* THE OPTIMIZED HERO IMAGE WRAPPER */}
           <div 
-            className="bg-white rounded-xl p-8 flex justify-center items-center h-[400px] sm:h-[500px] border border-gray-100 shadow-sm overflow-hidden cursor-crosshair relative"
+            className="bg-white rounded-xl flex justify-center items-center h-[400px] sm:h-[500px] border border-gray-100 shadow-sm overflow-hidden cursor-crosshair relative"
             onMouseEnter={() => setIsZoomed(true)}
             onMouseLeave={() => setIsZoomed(false)}
             onMouseMove={handleMouseMove}
           >
-            <img 
-              src={activeImg} 
-              alt={cleanName} 
+            <div 
               style={{ transformOrigin: zoomOrigin, transform: isZoomed && !isMobile ? 'scale(2)' : 'scale(1)' }} 
-              className="max-h-full max-w-full object-contain transition-transform duration-200 ease-out"
-            />
+              className="relative w-full h-full transition-transform duration-200 ease-out"
+            >
+              <Image 
+                src={activeImg} 
+                alt={cleanName} 
+                fill
+                priority // Preloads this specific image instantly!
+                sizes="(max-width: 768px) 100vw, 50vw"
+                className="object-contain p-8"
+              />
+            </div>
           </div>
           
+          {/* THE OPTIMIZED THUMBNAIL GALLERY */}
           {product.images && product.images.length > 1 && (
             <div className="grid grid-cols-4 gap-4">
               {product.images.map((img, index) => (
                 <div 
                   key={img.id || index} 
                   onClick={() => setActiveImg(img.src)}
-                  className={`bg-white rounded-lg p-2 h-24 flex justify-center items-center border cursor-pointer transition-all ${
+                  className={`bg-white rounded-lg relative h-24 flex justify-center items-center border cursor-pointer transition-all overflow-hidden ${
                     activeImg === img.src ? 'border-haitiBlue shadow-md ring-2 ring-haitiBlue/20' : 'border-gray-100 hover:border-gray-300'
                   }`}
                 >
-                  <img src={img.src} alt={`${cleanName} view ${index + 1}`} className="max-h-full object-contain" />
+                  <Image 
+                    src={img.src} 
+                    alt={`${cleanName} view ${index + 1}`} 
+                    fill
+                    sizes="100px" // Tells Next.js to aggressively compress this tiny image
+                    className="object-contain p-2" 
+                  />
                 </div>
               ))}
             </div>

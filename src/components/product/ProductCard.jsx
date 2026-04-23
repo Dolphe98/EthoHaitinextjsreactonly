@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useCartStore } from '@/store/cartStore';
 
 export default function ProductCard({ product }) {
@@ -25,7 +26,7 @@ export default function ProductCard({ product }) {
       name: cleanName, 
       price: numericPrice, 
       price_html: product.price_html, 
-      image: product.images?.[0]?.src || "https://placehold.co/500x500?text=No+Image",
+      image: product.images?.[0]?.src || "https://placehold.co/500x500.png?text=No+Image",
       selectedColor: null, 
       selectedSize: null, 
       productData: product // Passed so the cart knows what options are available!
@@ -73,8 +74,15 @@ export default function ProductCard({ product }) {
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 1 0 0 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186 9.566-5.314m-9.566 7.5 9.566 5.314m0 0a2.25 2.25 0 1 0 3.935 2.186 2.25 2.25 0 0 0-3.935-2.186Zm0-12.814a2.25 2.25 0 1 0 3.933-2.185 2.25 2.25 0 0 0-3.933 2.185Z" /></svg>
       </button>
 
-      <div className="relative h-72 bg-gray-100 flex items-center justify-center p-4">
-        <img src={product.images?.[0]?.src || "https://placehold.co/500x500?text=No+Image"} alt={product.name} className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-500" />
+      {/* OPTIMIZED NEXT.JS IMAGE WRAPPER */}
+      <div className="relative h-72 bg-gray-100 overflow-hidden">
+        <Image 
+          src={product.images?.[0]?.src || "https://placehold.co/500x500.png?text=No+Image"} 
+          alt={cleanName} 
+          fill
+          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+          className="object-contain p-4 group-hover:scale-105 transition-transform duration-500" 
+        />
       </div>
 
       <div className="p-5 flex flex-col flex-grow">
