@@ -46,6 +46,13 @@ export default function CheckoutPage() {
     }
   }, [cart.length, router, paymentSuccess]);
 
+  // Auto-fill email if logged in
+  useEffect(() => {
+    if (user?.email && !guestForm.email) {
+      setGuestForm(prev => ({ ...prev, email: user.email }));
+    }
+  }, [user]);
+
   useEffect(() => {
     async function fetchAddress() {
       if (user?.id) {
@@ -125,7 +132,30 @@ export default function CheckoutPage() {
     }
   };
 
-  const handleGuestSubmit = (e) => { e.preventDefault(); setAddress(guestForm); };
+  const handleGuestSubmit = async (e) => { 
+    e.preventDefault(); 
+    setAddress(guestForm); // Update local state so they can instantly proceed to payment
+    
+    // If logged in, quietly save this new address to their profile in the background
+    if (user?.id) {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          first_name: guestForm.first_name,
+          last_name: guestForm.last_name,
+          address_1: guestForm.address_1,
+          city: guestForm.city,
+          state: guestForm.state,
+          postcode: guestForm.postcode,
+          phone: guestForm.phone,
+          address_book: [guestForm] // Automatically set as their default address
+        })
+        .eq('id', user.id);
+        
+      if (error) console.error("Background save failed:", error);
+    }
+  };
+  
   const handleGuestChange = (e) => { setGuestForm({ ...guestForm, [e.target.name]: e.target.value }); };
 
   if (!mounted) return <div className="pt-32 min-h-screen bg-ethoBg"></div>;
@@ -211,69 +241,60 @@ export default function CheckoutPage() {
                 </div>
               ) : !address ? (
                 
-                user?.id ? (
-                  <div className="bg-white p-8 rounded-xl shadow-sm border-2 border-haitiRed text-center">
-                    <div className="bg-red-50 p-4 rounded-full inline-block mb-4">
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8 text-haitiRed"><path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" /></svg>
-                    </div>
-                    <h2 className="text-xl font-bold text-ethoDark mb-2">Missing Shipping Address</h2>
-                    <p className="text-sm text-gray-500 mb-6">You must provide a valid delivery address to calculate shipping.</p>
-                    <Link href="/addresses" className="w-full block bg-haitiRed hover:bg-red-700 text-white font-extrabold py-3 px-4 rounded shadow-md transition-colors">
-                      Add Shipping Address
-                    </Link>
-                  </div>
-                ) : (
-                  <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-200">
-                    <div className="flex justify-between items-center mb-6 border-b border-gray-100 pb-4">
-                      <h2 className="text-xl font-bold text-ethoDark">Guest Checkout</h2>
+                <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-200">
+                  <div className="flex justify-between items-center mb-6 border-b border-gray-100 pb-4">
+                    <h2 className="text-xl font-bold text-ethoDark">
+                      {user?.id ? "Shipping Address" : "Guest Checkout"}
+                    </h2>
+                    {!user?.id && (
                       <Link href="/account" className="text-sm font-bold text-haitiBlue hover:underline">Log in instead</Link>
-                    </div>
-                    <form onSubmit={handleGuestSubmit} className="space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-xs font-bold text-gray-500 mb-1">First Name</label>
-                          <input type="text" name="first_name" required value={guestForm.first_name} onChange={handleGuestChange} className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-haitiBlue text-sm text-black" />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-bold text-gray-500 mb-1">Last Name</label>
-                          <input type="text" name="last_name" required value={guestForm.last_name} onChange={handleGuestChange} className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-haitiBlue text-sm text-black" />
-                        </div>
-                      </div>
-                      
-                      {/* EMAIL OPTIONAL, PHONE MANDATORY */}
-                      <div>
-                        <label className="block text-xs font-bold text-gray-500 mb-1">Email (For order tracking)</label>
-                        <input type="email" name="email" value={guestForm.email} onChange={handleGuestChange} className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-haitiBlue text-sm text-black" />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-bold text-gray-500 mb-1">Phone Number</label>
-                        <input type="tel" name="phone" required value={guestForm.phone} onChange={handleGuestChange} className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-haitiBlue text-sm text-black" />
-                      </div>
-                      
-                      <div>
-                        <label className="block text-xs font-bold text-gray-500 mb-1">Street Address</label>
-                        <input type="text" name="address_1" required value={guestForm.address_1} onChange={handleGuestChange} className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-haitiBlue text-sm text-black" />
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-xs font-bold text-gray-500 mb-1">City</label>
-                          <input type="text" name="city" required value={guestForm.city} onChange={handleGuestChange} className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-haitiBlue text-sm text-black" />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-bold text-gray-500 mb-1">State (e.g. FL, NY)</label>
-                          <input type="text" name="state" required maxLength="2" value={guestForm.state} onChange={handleGuestChange} className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-haitiBlue text-sm text-black uppercase" />
-                        </div>
-                      </div>
-                      <div>
-                        <label className="block text-xs font-bold text-gray-500 mb-1">ZIP Code</label>
-                        <input type="text" name="postcode" required value={guestForm.postcode} onChange={handleGuestChange} className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-haitiBlue text-sm text-black" />
-                      </div>
-                      <button type="submit" className="w-full bg-ethoDark hover:bg-black text-white font-extrabold py-3 rounded mt-2 transition-colors">
-                        Continue to Payment
-                      </button>
-                    </form>
+                    )}
                   </div>
-                )
+                  <form onSubmit={handleGuestSubmit} className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-bold text-gray-500 mb-1">First Name</label>
+                        <input type="text" name="first_name" required value={guestForm.first_name} onChange={handleGuestChange} className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-haitiBlue text-sm text-black" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-500 mb-1">Last Name</label>
+                        <input type="text" name="last_name" required value={guestForm.last_name} onChange={handleGuestChange} className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-haitiBlue text-sm text-black" />
+                      </div>
+                    </div>
+                    
+                    {/* EMAIL OPTIONAL, PHONE MANDATORY */}
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 mb-1">Email (For order tracking)</label>
+                      <input type="email" name="email" value={guestForm.email} onChange={handleGuestChange} className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-haitiBlue text-sm text-black" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 mb-1">Phone Number</label>
+                      <input type="tel" name="phone" required value={guestForm.phone} onChange={handleGuestChange} className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-haitiBlue text-sm text-black" />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 mb-1">Street Address</label>
+                      <input type="text" name="address_1" required value={guestForm.address_1} onChange={handleGuestChange} className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-haitiBlue text-sm text-black" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-bold text-gray-500 mb-1">City</label>
+                        <input type="text" name="city" required value={guestForm.city} onChange={handleGuestChange} className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-haitiBlue text-sm text-black" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-500 mb-1">State (e.g. FL, NY)</label>
+                        <input type="text" name="state" required maxLength="2" value={guestForm.state} onChange={handleGuestChange} className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-haitiBlue text-sm text-black uppercase" />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 mb-1">ZIP Code</label>
+                      <input type="text" name="postcode" required value={guestForm.postcode} onChange={handleGuestChange} className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-haitiBlue text-sm text-black" />
+                    </div>
+                    <button type="submit" className="w-full bg-ethoDark hover:bg-black text-white font-extrabold py-3 rounded mt-2 transition-colors">
+                      Continue to Payment
+                    </button>
+                  </form>
+                </div>
 
               ) : (
 
@@ -285,9 +306,8 @@ export default function CheckoutPage() {
                       <p className="text-sm text-gray-600">{address.address_1}</p>
                       <p className="text-sm text-gray-600">{address.city}, {address.state} {address.postcode}</p>
                     </div>
-                    {!user?.id && (
-                        <button onClick={() => setAddress(null)} className="text-xs font-bold text-haitiBlue hover:underline">Edit</button>
-                    )}
+                    {/* Even logged in users should be able to edit this order's address temporarily if they want */}
+                    <button onClick={() => setAddress(null)} className="text-xs font-bold text-haitiBlue hover:underline">Edit</button>
                   </div>
 
                   <h2 className="text-xl font-bold text-ethoDark mb-2">Payment</h2>

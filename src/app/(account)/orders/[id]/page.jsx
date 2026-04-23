@@ -288,15 +288,15 @@ export default function OrderDetailsPage() {
             {isGuest ? (
               <div className="space-y-1">
                 <p className="text-sm text-gray-600 italic mb-2">Street address hidden for privacy.</p>
-                <p className="text-sm font-bold text-ethoDark">{address.city || 'City Hidden'}, {address.state || 'State Hidden'}</p>
+                <p className="text-sm font-bold text-ethoDark">{address.city || 'City Hidden'}, {address.state || address.region || 'State Hidden'}</p>
                 <p className="text-sm text-gray-500">{address.country === 'US' ? 'United States' : address.country}</p>
               </div>
             ) : (
               <div className="space-y-1 text-sm text-gray-600">
-                <p className="font-bold text-ethoDark">{order.shipping_address?.first_name} {order.shipping_address?.last_name}</p>
-                <p>{address.address1 || address.address_1}</p>
-                {address.address2 && <p>{address.address2}</p>}
-                <p>{address.city}, {address.region || address.state} {address.zip || address.postcode}</p>
+                <p className="font-bold text-ethoDark">{address.first_name || address.firstName} {address.last_name || address.lastName}</p>
+                <p>{address.address_1 || address.address1}</p>
+                {(address.address_2 || address.address2) && <p>{address.address_2 || address.address2}</p>}
+                <p>{address.city}, {address.state || address.region} {address.postcode || address.zip}</p>
               </div>
             )}
           </div>

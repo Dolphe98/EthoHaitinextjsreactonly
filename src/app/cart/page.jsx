@@ -5,6 +5,51 @@ import Link from 'next/link';
 import { useCartStore } from '@/store/cartStore';
 import { formatPrice } from '@/utils/formatPrice';
 
+// CUSTOM DROPDOWN TO BYPASS NATIVE MOBILE OS WHEELS
+function CustomSelect({ options, value, onChange, placeholder, hasError }) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className={`flex items-center justify-between text-sm border rounded px-3 py-2 min-w-[130px] focus:ring-2 focus:ring-haitiBlue focus:outline-none cursor-pointer shadow-sm ${
+          hasError 
+            ? 'border-red-400 bg-red-50 text-red-700 font-bold outline-red-200' 
+            : 'border-gray-300 text-gray-700 bg-white'
+        }`}
+      >
+        <span>{value || placeholder}</span>
+        <svg className={`w-4 h-4 ml-2 transition-transform ${isOpen ? 'rotate-180' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+      </button>
+
+      {isOpen && (
+        <>
+          {/* Invisible overlay to close the dropdown when tapping outside */}
+          <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)}></div>
+          
+          <div className="absolute left-0 z-50 w-full mt-1 bg-white border border-gray-200 rounded shadow-xl max-h-60 overflow-y-auto animate-in fade-in slide-in-from-top-1 duration-200">
+            {options.map((opt) => (
+              <div
+                key={opt}
+                onClick={() => {
+                  onChange(opt);
+                  setIsOpen(false);
+                }}
+                className={`px-4 py-3 text-sm cursor-pointer hover:bg-gray-50 border-b border-gray-50 last:border-0 ${
+                  value === opt ? 'bg-gray-50 font-bold text-haitiBlue' : 'text-gray-700'
+                }`}
+              >
+                {opt}
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 export default function CartPage() {
   const { cart, removeFromCart, updateQuantity, updateCartItemVariants, duplicateCartItem } = useCartStore();
   const [showConfigModal, setShowConfigModal] = useState(false);
@@ -114,27 +159,25 @@ export default function CartPage() {
                   {(colorOptions.length > 0 || sizeOptions.length > 0) ? (
                     <div className="flex flex-col mt-3 mb-2 items-center sm:items-start gap-2">
                       
-                      {/* The Inline Dropdowns */}
+                      {/* The Custom Inline Dropdowns */}
                       <div className="flex flex-wrap gap-2 justify-center sm:justify-start">
                         {colorOptions.length > 0 && (
-                          <select 
-                            value={item.selectedColor || ""}
-                            onChange={(e) => updateCartItemVariants(item.cartItemId, e.target.value, item.selectedSize)}
-                            className={`text-sm border rounded px-3 py-2 focus:ring-haitiBlue focus:outline-none cursor-pointer shadow-sm ${needsColor ? 'border-red-400 bg-red-50 text-red-700 font-bold outline-red-200' : 'border-gray-300 text-gray-700 bg-white'}`}
-                          >
-                            <option value="" disabled>Select Color ▾</option>
-                            {colorOptions.map(c => <option key={c} value={c}>{c}</option>)}
-                          </select>
+                          <CustomSelect 
+                            options={colorOptions}
+                            value={item.selectedColor}
+                            onChange={(val) => updateCartItemVariants(item.cartItemId, val, item.selectedSize)}
+                            placeholder="Select Color"
+                            hasError={needsColor}
+                          />
                         )}
                         {sizeOptions.length > 0 && (
-                          <select 
-                            value={item.selectedSize || ""}
-                            onChange={(e) => updateCartItemVariants(item.cartItemId, item.selectedColor, e.target.value)}
-                            className={`text-sm border rounded px-3 py-2 focus:ring-haitiBlue focus:outline-none cursor-pointer shadow-sm ${needsSize ? 'border-red-400 bg-red-50 text-red-700 font-bold outline-red-200' : 'border-gray-300 text-gray-700 bg-white'}`}
-                          >
-                            <option value="" disabled>Select Size ▾</option>
-                            {sizeOptions.map(s => <option key={s} value={s}>{s}</option>)}
-                          </select>
+                          <CustomSelect 
+                            options={sizeOptions}
+                            value={item.selectedSize}
+                            onChange={(val) => updateCartItemVariants(item.cartItemId, item.selectedColor, val)}
+                            placeholder="Select Size"
+                            hasError={needsSize}
+                          />
                         )}
                       </div>
 
