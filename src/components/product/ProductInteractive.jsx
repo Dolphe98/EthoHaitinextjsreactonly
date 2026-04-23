@@ -2,29 +2,33 @@
 
 import { useState, useEffect } from 'react';
 import { useCartStore } from '@/store/cartStore';
+import { useSearchParams, useRouter } from 'next/navigation';
 
 export default function ProductInteractive({ product }) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const editCartItemId = searchParams.get('editCartItem');
+
   const cleanName = product.name?.replace(/&#8217;/g, "'").replace(/&#8216;/g, "'").replace(/&amp;/g, "&").replace(/&#038;/g, "&") || "Product";
   const [activeImg, setActiveImg] = useState(product.images?.[0]?.src || "https://placehold.co/800x800?text=No+Image");
   const [zoomOrigin, setZoomOrigin] = useState("50% 50%");
   const [isZoomed, setIsZoomed] = useState(false);
   
   // Cart & Feedback States
+  const { cart, addToCart, overwriteCartItem } = useCartStore();
   const [addedToCart, setAddedToCart] = useState(false);
   const [cartError, setCartError] = useState("");
+
+  // Edit Mode Logic
+  const itemToEdit = cart.find(item => item.cartItemId === editCartItemId);
+  const isEditMode = !!editCartItemId && !!itemToEdit;
+  const [hasInitializedEdit, setHasInitializedEdit] = useState(false);
 
   // Share & WhatsApp States
   const [showShareModal, setShowShareModal] = useState(false);
   const [copiedToast, setCopiedToast] = useState(false);
   const [isWhatsAppLoading, setIsWhatsAppLoading] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-
-  useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 768);
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
 
   const colorAttr = product.attributes?.find( a => a.name.toLowerCase() === 'color' || a.name.toLowerCase() === 'colors' );
   const sizeAttr = product.attributes?.find( a => a.name.toLowerCase() === 'size' || a.name.toLowerCase() === 'sizes' );
@@ -33,7 +37,33 @@ export default function ProductInteractive({ product }) {
 
   const [selectedColor, setSelectedColor] = useState(null);
   const [selectedSize, setSelectedSize] = useState(null);
-  const addToCart = useCartStore((state) => state.addToCart);
+
+  // Initializer for Edit Mode
+  useEffect(() => {
+    if (isEditMode && !hasInitializedEdit) {
+      if (itemToEdit.selectedColor) {
+        setSelectedColor(itemToEdit.selectedColor);
+        const colorVariation = product.variations?.find(v => 
+          v.attributes.some(attr => attr.name.toLowerCase().includes('color') && (attr.value === itemToEdit.selectedColor || attr.option === itemToEdit.selectedColor)) && 
+          (v.image?.src || v.image)
+        );
+        if (colorVariation) {
+          setActiveImg(colorVariation.image?.src || colorVariation.image);
+        }
+      }
+      if (itemToEdit.selectedSize) {
+        setSelectedSize(itemToEdit.selectedSize);
+      }
+      setHasInitializedEdit(true);
+    }
+  }, [isEditMode, itemToEdit, hasInitializedEdit, product.variations]);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const handleMouseMove = (e) => {
     const { left, top, width, height } = e.currentTarget.getBoundingClientRect();
@@ -71,31 +101,47 @@ export default function ProductInteractive({ product }) {
   const handleAddToCart = () => {
     // 1. Check if required options are missing
     if (isColorRequired || isSizeRequired) {
-      setCartError("Please select a color and size to add this to your cart.");
+      setCartError(isEditMode ? "Please select a color and size to save your changes." : "Please select a color and size to add this to your cart.");
       return;
     }
 
-    // 2. Add to Cart if valid
+    // 2. Calculate Price
     let numericPrice = 0;
     if (selectedVariation?.prices?.price) { numericPrice = Number(selectedVariation.prices.price) / 100; } 
     else if (selectedVariation?.price) { numericPrice = Number(selectedVariation.price); } 
     else if (product.prices?.price) { numericPrice = Number(product.prices.price) / 100; } 
     else if (product.price) { numericPrice = Number(product.price); }
     
-    addToCart({ 
-      id: product.id, 
-      variationId: selectedVariation?.id || null, 
-      cartItemId: `${product.id}-${selectedVariation?.id || selectedColor || 'base'}-${selectedSize || 'base'}`, 
-      name: cleanName, 
-      price: numericPrice, 
-      price_html: selectedVariation?.price_html || product.price_html, 
-      image: activeImg, 
-      selectedColor, 
-      selectedSize, 
-    });
-    
-    setAddedToCart(true);
-    setTimeout(() => setAddedToCart(false), 2000);
+    // 3. Overwrite or Add based on Edit Mode
+    if (isEditMode) {
+      overwriteCartItem(editCartItemId, {
+        variationId: selectedVariation?.id || null,
+        price: numericPrice,
+        price_html: selectedVariation?.price_html || product.price_html,
+        image: activeImg,
+        selectedColor,
+        selectedSize,
+      });
+      setAddedToCart(true);
+      setTimeout(() => {
+        router.push('/cart'); // Rapid bounce back to cart!
+      }, 500); 
+    } else {
+      addToCart({ 
+        id: product.id, 
+        variationId: selectedVariation?.id || null, 
+        cartItemId: `${product.id}-${selectedVariation?.id || selectedColor || 'base'}-${selectedSize || 'base'}`, 
+        name: cleanName, 
+        price: numericPrice, 
+        price_html: selectedVariation?.price_html || product.price_html, 
+        image: activeImg, 
+        selectedColor, 
+        selectedSize, 
+        productData: product 
+      });
+      setAddedToCart(true);
+      setTimeout(() => setAddedToCart(false), 2000);
+    }
   };
 
   const handleWhatsApp = () => {
@@ -238,6 +284,13 @@ export default function ProductInteractive({ product }) {
         {/* RIGHT COLUMN: THE DETAILS */}
         <div className="flex flex-col relative pb-8 md:pb-0">
           
+          {isEditMode && (
+            <div className="bg-ethoDark text-white text-xs font-bold px-3 py-1.5 rounded-full inline-flex items-center gap-2 mb-4 w-max shadow-sm">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" /></svg>
+              Editing Cart Item
+            </div>
+          )}
+
           <div className="flex justify-between items-start gap-4 mb-4">
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-ethoDark leading-tight tracking-tight">
               {cleanName}
@@ -321,7 +374,7 @@ export default function ProductInteractive({ product }) {
             </div>
           )}
 
-          {/* STACKED ACTION BUTTONS (Always visible in document flow) */}
+          {/* STACKED ACTION BUTTONS */}
           <div className="flex flex-col gap-4 mt-2">
             
             <button 
@@ -335,14 +388,14 @@ export default function ProductInteractive({ product }) {
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-6 h-6">
                     <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
                   </svg>
-                  Added to Cart!
+                  {isEditMode ? "Saved to Cart!" : "Added to Cart!"}
                 </>
               ) : (
                 <>
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 0 0-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 0 0-16.536-1.84M7.5 14.25 5.106 5.272M6 20.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Zm12.75 0a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d={isEditMode ? "m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" : "M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 0 0-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 0 0-16.536-1.84M7.5 14.25 5.106 5.272M6 20.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Zm12.75 0a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z"} />
                   </svg>
-                  Add to Cart
+                  {isEditMode ? "Save Modifications to Cart" : "Add to Cart"}
                 </>
               )}
             </button>
