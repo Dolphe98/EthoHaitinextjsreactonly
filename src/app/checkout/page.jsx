@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useCartStore } from '@/store/cartStore';
 import { useAuthStore } from '@/store/authStore';
@@ -259,9 +260,18 @@ export default function CheckoutPage() {
 
                   return (
                     <div key={item.cartItemId} className={`flex items-start gap-4 p-3 rounded-lg transition-colors border ${needsAction ? 'border-red-300 bg-red-50/40' : 'border-transparent bg-gray-50'}`}>
-                      <div className="w-16 h-16 bg-white rounded flex-shrink-0 flex items-center justify-center p-1 border border-gray-100 shadow-sm relative">
-                        <img src={item.image} alt={item.name} className="max-h-full max-w-full object-contain" />
+                      
+                      {/* OPTIMIZED NEXT.JS THUMBNAIL */}
+                      <div className="relative w-16 h-16 bg-white rounded flex-shrink-0 border border-gray-100 shadow-sm overflow-hidden">
+                        <Image 
+                          src={item.image || "https://placehold.co/150x150.png?text=No+Image"} 
+                          alt={item.name} 
+                          fill
+                          sizes="80px"
+                          className="object-contain p-1" 
+                        />
                       </div>
+
                       <div className="flex-grow">
                         <h3 className="font-bold text-sm text-ethoDark line-clamp-1">
                           {item.name?.replace(/&#8217;/g, "'").replace(/&#8216;/g, "'").replace(/&amp;/g, "&").replace(/&#038;/g, "&")}
@@ -270,25 +280,33 @@ export default function CheckoutPage() {
                         {needsAction && <span className="text-[10px] font-extrabold text-haitiRed uppercase tracking-wider block mt-0.5 mb-1">⚠️ Action Required</span>}
 
                         {(colorOptions.length > 0 || sizeOptions.length > 0) ? (
-                          <div className="flex flex-wrap gap-2 mt-2">
-                            {colorOptions.length > 0 && (
-                              <CustomSelect 
-                                options={colorOptions}
-                                value={item.selectedColor}
-                                onChange={(val) => updateCartItemVariants(item.cartItemId, val, item.selectedSize)}
-                                placeholder="Select Color"
-                                hasError={needsColor}
-                              />
-                            )}
-                            {sizeOptions.length > 0 && (
-                              <CustomSelect 
-                                options={sizeOptions}
-                                value={item.selectedSize}
-                                onChange={(val) => updateCartItemVariants(item.cartItemId, item.selectedColor, val)}
-                                placeholder="Select Size"
-                                hasError={needsSize}
-                              />
-                            )}
+                          <div className="flex flex-col mt-2 gap-1.5">
+                            <div className="flex flex-wrap gap-2">
+                              {colorOptions.length > 0 && (
+                                <CustomSelect 
+                                  options={colorOptions}
+                                  value={item.selectedColor}
+                                  onChange={(val) => updateCartItemVariants(item.cartItemId, val, item.selectedSize)}
+                                  placeholder="Select Color"
+                                  hasError={needsColor}
+                                />
+                              )}
+                              {sizeOptions.length > 0 && (
+                                <CustomSelect 
+                                  options={sizeOptions}
+                                  value={item.selectedSize}
+                                  onChange={(val) => updateCartItemVariants(item.cartItemId, item.selectedColor, val)}
+                                  placeholder="Select Size"
+                                  hasError={needsSize}
+                                />
+                              )}
+                            </div>
+                            <Link 
+                              href={`/product/${product?.slug}?editCartItem=${item.cartItemId}`} 
+                              className="text-[11px] text-haitiBlue hover:underline font-medium"
+                            >
+                              Need more info? See all product details.
+                            </Link>
                           </div>
                         ) : (
                           (item.selectedColor || item.selectedSize) && (
@@ -299,16 +317,6 @@ export default function CheckoutPage() {
                             </p>
                           )
                         )}
-
-                        {/* Edit Mode Link - ALWAYS VISIBLE */}
-                        <div className="mt-1.5">
-                          <Link 
-                            href={`/product/${product?.slug}?editCartItem=${item.cartItemId}`} 
-                            className="text-[11px] text-haitiBlue hover:underline font-medium"
-                          >
-                            Need more info? See all product details.
-                          </Link>
-                        </div>
                         
                         <div className="flex justify-between items-center mt-3 pt-3 border-t border-gray-200/60">
                           <p className="text-xs text-gray-500 font-medium">Qty: {item.quantity}</p>

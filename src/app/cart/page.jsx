@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useCartStore } from '@/store/cartStore';
 import { formatPrice } from '@/utils/formatPrice';
 
@@ -147,8 +148,15 @@ export default function CartPage() {
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                 </button>
                 
-                <div className="w-24 h-24 sm:w-28 sm:h-28 flex-shrink-0 bg-gray-50 border border-gray-200 rounded flex items-center justify-center overflow-hidden">
-                  <img src={item.image || "https://placehold.co/150x150?text=No+Image"} alt={item.name} className="w-full h-full object-contain p-2"/>
+                {/* OPTIMIZED NEXT.JS THUMBNAIL */}
+                <div className="relative w-24 h-24 sm:w-28 sm:h-28 flex-shrink-0 bg-gray-50 border border-gray-200 rounded overflow-hidden">
+                  <Image 
+                    src={item.image || "https://placehold.co/150x150.png?text=No+Image"} 
+                    alt={item.name} 
+                    fill
+                    sizes="120px"
+                    className="object-contain p-2"
+                  />
                 </div>
                 
                 <div className="flex-1 text-center sm:text-left w-full">
@@ -189,7 +197,7 @@ export default function CartPage() {
                       )
                     )}
 
-                    {/* Edit Mode Link - ALWAYS VISIBLE */}
+                    {/* Edit Mode Link */}
                     <Link 
                       href={`/product/${product?.slug}?editCartItem=${item.cartItemId}`} 
                       className="text-[11px] text-haitiBlue hover:underline font-medium mt-1"

@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import { fetchAllCategories, fetchProductsByCategory } from '@/services/products';
 
 export default async function AlternatingCategoryGrid() {
@@ -15,20 +16,20 @@ export default async function AlternatingCategoryGrid() {
   // 3. The Zipper Logic
   const zippedCategories = [];
   const maxLength = Math.max(mensSubs.length, womensSubs.length);
-  
+
   for (let i = 0; i < maxLength; i++) {
     if (mensSubs[i]) {
-      zippedCategories.push({ 
-        ...mensSubs[i], 
-        displayName: `Men's ${mensSubs[i].name}`, 
-        genderTag: "Men's Collection" 
+      zippedCategories.push({
+        ...mensSubs[i],
+        displayName: `Men's ${mensSubs[i].name}`,
+        genderTag: "Men's Collection"
       });
     }
     if (womensSubs[i]) {
-      zippedCategories.push({ 
-        ...womensSubs[i], 
-        displayName: `Women's ${womensSubs[i].name}`, 
-        genderTag: "Women's Collection" 
+      zippedCategories.push({
+        ...womensSubs[i],
+        displayName: `Women's ${womensSubs[i].name}`,
+        genderTag: "Women's Collection"
       });
     }
   }
@@ -70,11 +71,11 @@ export default async function AlternatingCategoryGrid() {
          <div className="space-y-3 text-lg text-gray-800">
            <p><strong className="text-black">1. Total Categories Engine Built:</strong> {allCategories.length}</p>
            
-           <p><strong className="text-black">2. Found "Men's Clothing" Parent?</strong> 
+           <p><strong className="text-black">2. Found "Men's Clothing" Parent?</strong>
              {mensParent ? <span className="text-green-600 font-bold ml-2">YES</span> : <span className="text-red-600 font-bold ml-2">NO</span>}
            </p>
            
-           <p><strong className="text-black">3. Found "Women's Clothing" Parent?</strong> 
+           <p><strong className="text-black">3. Found "Women's Clothing" Parent?</strong>
              {womensParent ? <span className="text-green-600 font-bold ml-2">YES</span> : <span className="text-red-600 font-bold ml-2">NO</span>}
            </p>
            
@@ -118,14 +119,30 @@ export default async function AlternatingCategoryGrid() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {validCategories.map((category, index) => (
           <Link key={`${category.id}-${index}`} href={`/category/${category.slug}`} className="bg-white border border-gray-200 rounded-lg overflow-hidden hover:shadow-xl transition-all duration-300 flex flex-col group relative">
-            <div className="relative h-72 bg-gray-100 flex items-center justify-center overflow-hidden p-4">
-              <img src={category.img2} alt={`${category.name} Flat`} className="absolute max-h-[90%] max-w-[90%] object-contain" />
-              <img src={category.img1} alt={`${category.name} Mockup`} className="absolute max-h-[90%] max-w-[90%] object-contain animate-crossfade bg-gray-100" style={{ animationDelay: `${index * 0.75}s` }} />
+            
+            {/* OPTIMIZED NEXT.JS IMAGE WRAPPER */}
+            <div className="relative h-72 bg-gray-100 overflow-hidden">
+              <Image 
+                src={category.img2 || "https://placehold.co/500x500.png?text=No+Image"} 
+                alt={`${category.name} Flat`} 
+                fill
+                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
+                className="object-contain p-4" 
+              />
+              <Image 
+                src={category.img1 || "https://placehold.co/500x500.png?text=No+Image"} 
+                alt={`${category.name} Mockup`} 
+                fill
+                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
+                className="object-contain p-4 animate-crossfade bg-gray-100" 
+                style={{ animationDelay: `${index * 0.75}s` }} 
+              />
               <span className="absolute top-3 left-3 z-10 bg-ethoDark text-white text-xs font-bold px-3 py-1 rounded shadow-sm">
                 {category.genderTag}
               </span>
             </div>
-            <div className="p-4 flex flex-col flex-grow text-center bg-white z-10">
+
+            <div className="p-4 flex flex-col flex-grow text-center bg-white z-10 border-t border-gray-100">
               <h3 className="text-xl font-extrabold text-gray-900 group-hover:text-haitiBlue transition-colors">
                 {category.displayName}
               </h3>

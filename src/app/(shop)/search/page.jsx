@@ -86,8 +86,10 @@ function SearchContent() {
                 <div className="bg-white rounded-lg shadow-sm p-12 mb-16">
                   <h2 className="text-2xl font-bold text-ethoDark mb-4">No exact matches found for '{query}'</h2>
                   <p className="text-gray-500 mb-8">Try checking your spelling or using a more general term. In the meantime, check out these trending items!</p>
+                  
+                  {/* FIXED: Changed from /category/collection to / */}
                   <Link 
-                    href="/category/collection" 
+                    href="/" 
                     className="bg-haitiBlue text-white px-8 py-3 rounded font-bold hover:bg-opacity-90 transition-colors inline-block"
                   >
                     Browse All Categories
