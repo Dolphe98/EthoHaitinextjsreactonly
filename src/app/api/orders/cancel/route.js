@@ -3,9 +3,11 @@ import { createClient } from '@supabase/supabase-js';
 
 export async function POST(request) {
   try {
-    const { orderId, userId, isGuest, phone } = await request.json();
+    const { orderId, itemId, itemIndex, userId, isGuest, phone } = await request.json();
 
-    if (!orderId) return NextResponse.json({ error: "Missing order ID" }, { status: 400 });
+    if (!orderId || itemIndex === undefined) {
+      return NextResponse.json({ error: "Missing order ID or item index" }, { status: 400 });
+    }
 
     const supabaseAdmin = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -46,27 +48,83 @@ export async function POST(request) {
       }
     }
 
-    // 4. Halt Printify Production!
+    // 4. Handle Line-Item Cancellation
+    let items = Array.isArray(order.items) ? [...order.items] : [];
+    
+    // Ensure the item exists
+    if (!items[itemIndex]) {
+      return NextResponse.json({ error: "Item not found in order." }, { status: 404 });
+    }
+    
+    // Ensure it isn't already cancelled
+    if (items[itemIndex].status === 'cancelled' || items[itemIndex].status === 'canceled') {
+      return NextResponse.json({ error: "This item is already cancelled." }, { status: 400 });
+    }
+
+    // Mark the specific line item as cancelled
+    items[itemIndex].status = 'cancelled';
+
+    // Check if ALL items in the order are now cancelled
+    const isWholeOrderCancelled = items.every(i => i.status === 'cancelled' || i.status === 'canceled');
+
+    // 5. Sync with Printify
     if (order.printify_order_id && process.env.PRINTIFY_SHOP_ID && process.env.PRINTIFY_API_TOKEN) {
       try {
-        await fetch(`https://api.printify.com/v1/shops/${process.env.PRINTIFY_SHOP_ID}/orders/${order.printify_order_id}/cancel.json`, {
-          method: 'POST',
-          headers: { 
-            'Authorization': `Bearer ${process.env.PRINTIFY_API_TOKEN}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ reason: "Canceled by customer" })
-        });
+        if (isWholeOrderCancelled) {
+          // If ALL items are cancelled, cancel the entire order in Printify
+          await fetch(`https://api.printify.com/v1/shops/${process.env.PRINTIFY_SHOP_ID}/orders/${order.printify_order_id}/cancel.json`, {
+            method: 'POST',
+            headers: { 
+              'Authorization': `Bearer ${process.env.PRINTIFY_API_TOKEN}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ reason: "Canceled by customer" })
+          });
+        } else {
+          // Partial Cancellation: PUT request to update Printify with ONLY the remaining items
+          const remainingPrintifyItems = items
+            .filter(i => i.status !== 'cancelled' && i.status !== 'canceled')
+            .map(i => ({
+              variant_id: i.variationId, // Ensure this aligns with your Printify variant format
+              quantity: i.quantity
+            }));
+
+          await fetch(`https://api.printify.com/v1/shops/${process.env.PRINTIFY_SHOP_ID}/orders/${order.printify_order_id}.json`, {
+            method: 'PUT',
+            headers: { 
+              'Authorization': `Bearer ${process.env.PRINTIFY_API_TOKEN}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ 
+              line_items: remainingPrintifyItems 
+            })
+          });
+        }
       } catch (printifyErr) {
-        console.error("Failed to cancel in Printify (might already be cancelled):", printifyErr);
-        // We continue anyway to ensure the local database updates
+        console.error("Failed to sync cancellation with Printify:", printifyErr);
+        // We continue to update the database so the UI reflects the user's intent.
       }
     }
 
-    // 5. Update Database to Cancelled
-    await supabaseAdmin.from('orders').update({ status: 'cancelled' }).eq('id', orderId);
+    // 6. Update the Database
+    const updatePayload = { items: items };
+    
+    // If every single item is now cancelled, update the top-level order status too
+    if (isWholeOrderCancelled) {
+      updatePayload.status = 'cancelled';
+    }
 
-    return NextResponse.json({ success: true, message: "Order cancelled successfully." }, { status: 200 });
+    await supabaseAdmin
+      .from('orders')
+      .update(updatePayload)
+      .eq('id', orderId);
+
+    // Alert the frontend about the success, and notify if the whole order was cancelled so it can update its UI state
+    return NextResponse.json({ 
+      success: true, 
+      message: "Item cancelled successfully.", 
+      isWholeOrderCancelled 
+    }, { status: 200 });
 
   } catch (error) {
     console.error("Cancellation Error:", error);

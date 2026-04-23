@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useAuthStore } from '@/store/authStore';
+import { useCartStore } from '@/store/cartStore';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
@@ -9,12 +10,14 @@ import { formatPrice } from '@/utils/formatPrice';
 
 export default function OrdersPage() {
   const { token, user } = useAuthStore();
+  const { addToCart } = useCartStore();
   const router = useRouter();
   const supabase = createClient();
 
   const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(true);
   const [orders, setOrders] = useState([]);
+  const [isReordering, setIsReordering] = useState(false);
   
   // States for Logged In Users
   const [activeFilter, setActiveFilter] = useState('All Orders');
@@ -67,7 +70,7 @@ export default function OrdersPage() {
       return;
     }
 
-    // Push to the Phase 2 tracking page
+    // Push to the tracking page
     router.push(`/orders/${cleanOrderId}?email=${encodeURIComponent(cleanEmail)}`);
   };
 
@@ -76,6 +79,7 @@ export default function OrdersPage() {
     const s = status?.toLowerCase() || 'processing';
     if (s === 'delivered') return <span className="px-3 py-1 bg-green-100 text-green-800 text-xs font-extrabold rounded-full uppercase tracking-wide">Delivered</span>;
     if (s === 'shipped') return <span className="px-3 py-1 bg-blue-100 text-blue-800 text-xs font-extrabold rounded-full uppercase tracking-wide">Shipped</span>;
+    if (s === 'canceled' || s === 'cancelled') return <span className="px-3 py-1 bg-red-100 text-red-800 text-xs font-extrabold rounded-full uppercase tracking-wide">Canceled</span>;
     return <span className="px-3 py-1 bg-yellow-100 text-yellow-800 text-xs font-extrabold rounded-full uppercase tracking-wide">In Production</span>;
   };
 
@@ -153,14 +157,59 @@ export default function OrdersPage() {
   // VIEW 2: AUTHENTICATED USER (LOGGED IN)
   // ==========================================
   
+  // Filter logic to include canceled items
   const filteredOrders = orders.filter(order => {
     if (activeFilter === 'All Orders') return true;
+    
     const s = order.status?.toLowerCase() || 'processing';
+    const isWholeOrderCanceled = s === 'canceled' || s === 'cancelled';
+    const hasCanceledItems = Array.isArray(order.items) && order.items.some(item => item.status === 'canceled' || item.status === 'cancelled');
+
     if (activeFilter === 'Processing' && (s === 'processing' || s === 'in production')) return true;
     if (activeFilter === 'Shipped' && s === 'shipped') return true;
     if (activeFilter === 'Delivered' && s === 'delivered') return true;
+    if (activeFilter === 'Canceled' && (isWholeOrderCanceled || hasCanceledItems)) return true;
+    
     return false;
   });
+
+  const handleBulkReorder = () => {
+    setIsReordering(true);
+    
+    // Extract all canceled items across all filtered orders
+    const itemsToReorder = [];
+    filteredOrders.forEach(order => {
+      const isWholeOrderCanceled = order.status?.toLowerCase() === 'canceled' || order.status?.toLowerCase() === 'cancelled';
+      
+      if (Array.isArray(order.items)) {
+        order.items.forEach(item => {
+          if (isWholeOrderCanceled || item.status === 'canceled' || item.status === 'cancelled') {
+            itemsToReorder.push(item);
+          }
+        });
+      }
+    });
+
+    // Push each canceled item back into the cart
+    itemsToReorder.forEach(item => {
+      addToCart({
+        id: item.id,
+        cartItemId: `${item.id}-${Date.now()}-${Math.random()}`, // Unique ID
+        name: item.name,
+        price: item.price || 0,
+        price_html: item.price_html,
+        image: item.image || item.images?.[0]?.src || "https://placehold.co/150x150?text=No+Image",
+        quantity: item.quantity || 1,
+        selectedColor: item.selectedColor,
+        selectedSize: item.selectedSize,
+        variationId: item.variationId,
+        productData: item.productData || item // Pass the product data forward!
+      });
+    });
+
+    // Route directly to checkout
+    router.push('/checkout');
+  };
 
   return (
     <main className="pt-32 pb-20 min-h-screen bg-ethoBg">
@@ -175,7 +224,7 @@ export default function OrdersPage() {
         <h1 className="text-3xl font-extrabold text-ethoDark mb-6">Your Orders</h1>
 
         <div className="flex overflow-x-auto no-scrollbar gap-3 mb-8 pb-2">
-          {['All Orders', 'Processing', 'Shipped', 'Delivered'].map((filter) => (
+          {['All Orders', 'Processing', 'Shipped', 'Delivered', 'Canceled'].map((filter) => (
             <button
               key={filter}
               onClick={() => setActiveFilter(filter)}
@@ -190,16 +239,34 @@ export default function OrdersPage() {
           ))}
         </div>
 
+        {/* BULK REORDER BUTTON (Only in Canceled Tab) */}
+        {activeFilter === 'Canceled' && filteredOrders.length > 0 && (
+          <button 
+            onClick={handleBulkReorder}
+            disabled={isReordering}
+            className="w-full bg-haitiBlue hover:bg-blue-800 text-white font-extrabold py-4 px-6 rounded-xl mb-8 shadow-md transition-colors flex items-center justify-center gap-2 text-lg"
+          >
+            {isReordering ? (
+              <div className="animate-spin rounded-full h-6 w-6 border-2 border-white border-t-transparent"></div>
+            ) : (
+              <>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>
+                Replace All Canceled Items
+              </>
+            )}
+          </button>
+        )}
+
         {orders.length === 0 ? (
            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
              <h3 className="text-xl font-extrabold text-ethoDark mb-2">No Orders Yet</h3>
              <p className="text-gray-500 mb-6">You haven't placed any orders with us yet.</p>
-             <Link href="/shop" className="bg-haitiBlue hover:bg-blue-800 text-white font-extrabold py-3 px-8 rounded transition-colors shadow-md inline-block">
+             <Link href="/category/collection" className="bg-haitiBlue hover:bg-blue-800 text-white font-extrabold py-3 px-8 rounded transition-colors shadow-md inline-block">
                Start Shopping
              </Link>
            </div>
         ) : filteredOrders.length === 0 ? (
-           <div className="text-center p-8 text-gray-500 font-medium">
+           <div className="text-center p-8 text-gray-500 font-medium bg-white rounded-xl border border-gray-200">
               No orders found matching "{activeFilter}".
            </div>
         ) : (
@@ -225,15 +292,19 @@ export default function OrdersPage() {
                     <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Items in Order</p>
                     <div className="flex items-center gap-3">
                       {displayItems.length > 0 ? (
-                        displayItems.map((item, idx) => (
-                          <div key={idx} className="w-16 h-16 bg-white border border-gray-200 rounded p-1 flex-shrink-0 flex items-center justify-center overflow-hidden">
-                             {item.image ? (
-                               <img src={item.image} alt={item.name || 'Product'} className="max-h-full max-w-full object-contain" />
-                             ) : (
-                               <div className="w-full h-full bg-gray-100 rounded"></div>
-                             )}
-                          </div>
-                        ))
+                        displayItems.map((item, idx) => {
+                          const isItemCanceled = item.status === 'canceled' || item.status === 'cancelled';
+                          return (
+                            <div key={idx} className="relative w-16 h-16 bg-white border border-gray-200 rounded p-1 flex-shrink-0 flex items-center justify-center overflow-hidden">
+                              {isItemCanceled && <div className="absolute inset-0 bg-white/60 z-10 backdrop-blur-[1px]"></div>}
+                              {item.image ? (
+                                <img src={item.image} alt={item.name || 'Product'} className="max-h-full max-w-full object-contain" />
+                              ) : (
+                                <div className="w-full h-full bg-gray-100 rounded"></div>
+                              )}
+                            </div>
+                          )
+                        })
                       ) : (
                         <span className="text-sm text-gray-500 italic">Processing items...</span>
                       )}
