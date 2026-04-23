@@ -9,8 +9,49 @@ import { createClient } from '@/lib/supabase';
 import { formatPrice } from '@/utils/formatPrice';
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
 
+// CUSTOM DROPDOWN TO BYPASS NATIVE MOBILE OS WHEELS
+function CustomSelect({ options, value, onChange, placeholder, hasError }) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={(e) => { e.preventDefault(); setIsOpen(!isOpen); }}
+        className={`flex items-center justify-between text-xs border rounded px-2 py-1.5 min-w-[110px] focus:ring-2 focus:ring-haitiBlue focus:outline-none cursor-pointer shadow-sm ${
+          hasError 
+            ? 'border-red-400 bg-red-50 text-red-700 font-bold outline-red-200' 
+            : 'border-gray-300 text-gray-700 bg-white'
+        }`}
+      >
+        <span className="truncate">{value || placeholder}</span>
+        <svg className={`w-3 h-3 ml-2 flex-shrink-0 transition-transform ${isOpen ? 'rotate-180' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+      </button>
+
+      {isOpen && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)}></div>
+          <div className="absolute left-0 z-50 w-max min-w-full mt-1 bg-white border border-gray-200 rounded shadow-xl max-h-48 overflow-y-auto animate-in fade-in slide-in-from-top-1 duration-200">
+            {options.map((opt) => (
+              <div
+                key={opt}
+                onClick={() => { onChange(opt); setIsOpen(false); }}
+                className={`px-3 py-2 text-xs cursor-pointer hover:bg-gray-50 border-b border-gray-50 last:border-0 ${
+                  value === opt ? 'bg-gray-50 font-bold text-haitiBlue' : 'text-gray-700'
+                }`}
+              >
+                {opt}
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 export default function CheckoutPage() {
-  const { cart, clearCart } = useCartStore();
+  const { cart, clearCart, updateCartItemVariants } = useCartStore();
   const { user } = useAuthStore();
   const router = useRouter();
   const supabase = createClient();
@@ -188,19 +229,82 @@ export default function CheckoutPage() {
             <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-200 h-fit">
               <h2 className="text-2xl font-bold text-ethoDark mb-6 border-b pb-4">Order Summary</h2>
               
-              <div className="space-y-4 max-h-[400px] overflow-y-auto no-scrollbar mb-6">
-                {cart.map((item) => (
-                  <div key={item.cartItemId} className="flex items-center gap-4">
-                    <div className="w-16 h-16 bg-gray-100 rounded flex-shrink-0 flex items-center justify-center p-2">
-                      <img src={item.image} alt={item.name} className="max-h-full max-w-full object-contain" />
+              <div className="space-y-4 max-h-[500px] overflow-y-auto no-scrollbar mb-6">
+                {cart.map((item) => {
+                  const product = item.productData;
+                  let colorOptions = [];
+                  let sizeOptions = [];
+                  
+                  if (product) {
+                    const colorAttr = product.attributes?.find( a => a.name.toLowerCase() === 'color' || a.name.toLowerCase() === 'colors' );
+                    const sizeAttr = product.attributes?.find( a => a.name.toLowerCase() === 'size' || a.name.toLowerCase() === 'sizes' );
+                    colorOptions = colorAttr?.terms ? colorAttr.terms.map(t => t.name) : (colorAttr?.options || []);
+                    sizeOptions = sizeAttr?.terms ? sizeAttr.terms.map(t => t.name) : (sizeAttr?.options || []);
+                  }
+                  
+                  const needsColor = colorOptions.length > 0 && !item.selectedColor;
+                  const needsSize = sizeOptions.length > 0 && !item.selectedSize;
+                  const needsAction = needsColor || needsSize;
+
+                  return (
+                    <div key={item.cartItemId} className={`flex items-start gap-4 p-3 rounded-lg transition-colors border ${needsAction ? 'border-red-300 bg-red-50/40' : 'border-transparent bg-gray-50'}`}>
+                      <div className="w-16 h-16 bg-white rounded flex-shrink-0 flex items-center justify-center p-1 border border-gray-100 shadow-sm relative">
+                        <img src={item.image} alt={item.name} className="max-h-full max-w-full object-contain" />
+                      </div>
+                      <div className="flex-grow">
+                        <h3 className="font-bold text-sm text-ethoDark line-clamp-1">
+                          {item.name?.replace(/&#8217;/g, "'").replace(/&#8216;/g, "'").replace(/&amp;/g, "&").replace(/&#038;/g, "&")}
+                        </h3>
+                        
+                        {needsAction && <span className="text-[10px] font-extrabold text-haitiRed uppercase tracking-wider block mt-0.5 mb-1">⚠️ Action Required</span>}
+
+                        {(colorOptions.length > 0 || sizeOptions.length > 0) ? (
+                          <div className="flex flex-col mt-2 gap-1.5">
+                            <div className="flex flex-wrap gap-2">
+                              {colorOptions.length > 0 && (
+                                <CustomSelect 
+                                  options={colorOptions}
+                                  value={item.selectedColor}
+                                  onChange={(val) => updateCartItemVariants(item.cartItemId, val, item.selectedSize)}
+                                  placeholder="Select Color"
+                                  hasError={needsColor}
+                                />
+                              )}
+                              {sizeOptions.length > 0 && (
+                                <CustomSelect 
+                                  options={sizeOptions}
+                                  value={item.selectedSize}
+                                  onChange={(val) => updateCartItemVariants(item.cartItemId, item.selectedColor, val)}
+                                  placeholder="Select Size"
+                                  hasError={needsSize}
+                                />
+                              )}
+                            </div>
+                            <Link 
+                              href={`/product/${product.slug}?editCartItem=${item.cartItemId}`} 
+                              className="text-[11px] text-haitiBlue hover:underline font-medium"
+                            >
+                              Need more info? See all product details.
+                            </Link>
+                          </div>
+                        ) : (
+                          (item.selectedColor || item.selectedSize) && (
+                            <p className="text-xs text-gray-500 mt-1">
+                              {item.selectedColor && `Color: ${item.selectedColor}`}
+                              {item.selectedColor && item.selectedSize && ` | `}
+                              {item.selectedSize && `Size: ${item.selectedSize}`}
+                            </p>
+                          )
+                        )}
+                        
+                        <div className="flex justify-between items-center mt-3 pt-3 border-t border-gray-200/60">
+                          <p className="text-xs text-gray-500 font-medium">Qty: {item.quantity}</p>
+                          <div className="font-bold text-ethoDark">{formatPrice(Number(item.price) * item.quantity)}</div>
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex-grow">
-                      <h3 className="font-bold text-sm text-ethoDark line-clamp-1">{item.name}</h3>
-                      <p className="text-xs text-gray-500">Qty: {item.quantity} | {item.selectedSize} {item.selectedColor}</p>
-                    </div>
-                    <div className="font-bold text-ethoDark">{formatPrice(Number(item.price) * item.quantity)}</div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
               
               <div className="border-t border-gray-200 pt-6 space-y-3">
@@ -321,10 +425,7 @@ export default function CheckoutPage() {
                           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
                         </div>
                         <h3 className="font-extrabold text-haitiRed mb-2 text-lg">Action Required</h3>
-                        <p className="text-sm text-red-800 mb-6 font-medium">Please return to your cart and select a size/color for all items before paying.</p>
-                        <Link href="/cart" className="inline-block bg-haitiRed text-white px-8 py-3 rounded font-extrabold shadow-md hover:bg-red-700 transition-colors">
-                          Return to Cart
-                        </Link>
+                        <p className="text-sm text-red-800 font-medium">Please select a size and color for the highlighted items in your order summary above before paying.</p>
                       </div>
                     ) : process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID ? (
                       <PayPalButtons 
