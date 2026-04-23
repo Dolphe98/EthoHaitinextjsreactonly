@@ -156,10 +156,9 @@ export default function CartPage() {
                     {item.name?.replace(/&#8217;/g, "'").replace(/&#8216;/g, "'").replace(/&amp;/g, "&").replace(/&#038;/g, "&")}
                   </h3>
 
-                  {(colorOptions.length > 0 || sizeOptions.length > 0) ? (
-                    <div className="flex flex-col mt-3 mb-2 items-center sm:items-start gap-2">
-                      
-                      {/* The Custom Inline Dropdowns */}
+                  <div className="flex flex-col mt-3 mb-2 items-center sm:items-start gap-2">
+                    
+                    {(colorOptions.length > 0 || sizeOptions.length > 0) ? (
                       <div className="flex flex-wrap gap-2 justify-center sm:justify-start">
                         {colorOptions.length > 0 && (
                           <CustomSelect 
@@ -180,25 +179,25 @@ export default function CartPage() {
                           />
                         )}
                       </div>
+                    ) : (
+                      (item.selectedColor || item.selectedSize) && (
+                        <p className="text-sm text-gray-500 mt-1">
+                          {item.selectedColor && `Color: ${item.selectedColor}`}
+                          {item.selectedColor && item.selectedSize && ` | `}
+                          {item.selectedSize && `Size: ${item.selectedSize}`}
+                        </p>
+                      )
+                    )}
 
-                      {/* Edit Mode Link */}
-                      <Link 
-                        href={`/product/${product.slug}?editCartItem=${item.cartItemId}`} 
-                        className="text-xs text-haitiBlue hover:underline font-medium mt-1"
-                      >
-                        Need more info? See all product details.
-                      </Link>
+                    {/* Edit Mode Link - ALWAYS VISIBLE */}
+                    <Link 
+                      href={`/product/${product?.slug}?editCartItem=${item.cartItemId}`} 
+                      className="text-[11px] text-haitiBlue hover:underline font-medium"
+                    >
+                      Need more info? See all product details.
+                    </Link>
 
-                    </div>
-                  ) : (
-                    (item.selectedColor || item.selectedSize) && (
-                      <p className="text-sm text-gray-500 mt-1">
-                        {item.selectedColor && `Color: ${item.selectedColor}`}
-                        {item.selectedColor && item.selectedSize && ` | `}
-                        {item.selectedSize && `Size: ${item.selectedSize}`}
-                      </p>
-                    )
-                  )}
+                  </div>
                   
                   <div className="mt-4 flex flex-col sm:flex-row items-center sm:justify-between gap-4 border-t border-gray-100 pt-4">
                     

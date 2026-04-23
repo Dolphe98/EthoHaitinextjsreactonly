@@ -270,33 +270,25 @@ export default function CheckoutPage() {
                         {needsAction && <span className="text-[10px] font-extrabold text-haitiRed uppercase tracking-wider block mt-0.5 mb-1">⚠️ Action Required</span>}
 
                         {(colorOptions.length > 0 || sizeOptions.length > 0) ? (
-                          <div className="flex flex-col mt-2 gap-1.5">
-                            <div className="flex flex-wrap gap-2">
-                              {colorOptions.length > 0 && (
-                                <CustomSelect 
-                                  options={colorOptions}
-                                  value={item.selectedColor}
-                                  onChange={(val) => updateCartItemVariants(item.cartItemId, val, item.selectedSize)}
-                                  placeholder="Select Color"
-                                  hasError={needsColor}
-                                />
-                              )}
-                              {sizeOptions.length > 0 && (
-                                <CustomSelect 
-                                  options={sizeOptions}
-                                  value={item.selectedSize}
-                                  onChange={(val) => updateCartItemVariants(item.cartItemId, item.selectedColor, val)}
-                                  placeholder="Select Size"
-                                  hasError={needsSize}
-                                />
-                              )}
-                            </div>
-                            <Link 
-                              href={`/product/${product.slug}?editCartItem=${item.cartItemId}`} 
-                              className="text-[11px] text-haitiBlue hover:underline font-medium"
-                            >
-                              Need more info? See all product details.
-                            </Link>
+                          <div className="flex flex-wrap gap-2 mt-2">
+                            {colorOptions.length > 0 && (
+                              <CustomSelect 
+                                options={colorOptions}
+                                value={item.selectedColor}
+                                onChange={(val) => updateCartItemVariants(item.cartItemId, val, item.selectedSize)}
+                                placeholder="Select Color"
+                                hasError={needsColor}
+                              />
+                            )}
+                            {sizeOptions.length > 0 && (
+                              <CustomSelect 
+                                options={sizeOptions}
+                                value={item.selectedSize}
+                                onChange={(val) => updateCartItemVariants(item.cartItemId, item.selectedColor, val)}
+                                placeholder="Select Size"
+                                hasError={needsSize}
+                              />
+                            )}
                           </div>
                         ) : (
                           (item.selectedColor || item.selectedSize) && (
@@ -307,6 +299,16 @@ export default function CheckoutPage() {
                             </p>
                           )
                         )}
+
+                        {/* Edit Mode Link - ALWAYS VISIBLE */}
+                        <div className="mt-1.5">
+                          <Link 
+                            href={`/product/${product?.slug}?editCartItem=${item.cartItemId}`} 
+                            className="text-[11px] text-haitiBlue hover:underline font-medium"
+                          >
+                            Need more info? See all product details.
+                          </Link>
+                        </div>
                         
                         <div className="flex justify-between items-center mt-3 pt-3 border-t border-gray-200/60">
                           <p className="text-xs text-gray-500 font-medium">Qty: {item.quantity}</p>
