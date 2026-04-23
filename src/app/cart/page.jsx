@@ -79,7 +79,7 @@ export default function CartPage() {
         <div className="max-w-3xl mx-auto px-4 text-center py-20 bg-white rounded-lg shadow-sm">
           <h1 className="text-4xl font-extrabold text-ethoDark">Your cart is empty</h1>
           <p className="text-gray-500 mt-4 mb-8">Looks like you haven't added any items to your cart yet.</p>
-          <Link href="/category/collection" className="bg-haitiBlue text-white px-8 py-3 rounded font-bold hover:bg-opacity-90 transition-colors inline-block">
+          <Link href="/" className="bg-haitiBlue text-white px-8 py-3 rounded font-bold hover:bg-opacity-90 transition-colors inline-block">
             Continue Shopping
           </Link>
         </div>
@@ -192,7 +192,7 @@ export default function CartPage() {
                     {/* Edit Mode Link - ALWAYS VISIBLE */}
                     <Link 
                       href={`/product/${product?.slug}?editCartItem=${item.cartItemId}`} 
-                      className="text-[11px] text-haitiBlue hover:underline font-medium"
+                      className="text-[11px] text-haitiBlue hover:underline font-medium mt-1"
                     >
                       Need more info? See all product details.
                     </Link>
