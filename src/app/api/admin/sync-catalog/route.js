@@ -1,63 +1,54 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase';
-import { fetchAllProducts } from '@/services/products';
+
+const PRINTIFY_SHOP_ID = process.env.PRINTIFY_SHOP_ID;
+const PRINTIFY_TOKEN = process.env.PRINTIFY_API_TOKEN;
 
 export async function POST(request) {
   try {
-    // 1. Basic Security: Ensure only YOU can trigger this sync
     const body = await request.json();
     if (body.secret !== 'ethohaiti-sync-2024') {
       return NextResponse.json({ error: 'Unauthorized Access' }, { status: 401 });
     }
 
-    console.log("Starting Catalog Sync from Printify to Supabase...");
+    let allProducts = [];
+    let currentPage = 1;
+    let lastPage = 1;
 
-    // 2. Fetch the massive catalog from Printify using your existing engine
-    const printifyProducts = await fetchAllProducts();
+    // 1. Fetch RAW data directly from Printify
+    do {
+      const url = `https://api.printify.com/v1/shops/${PRINTIFY_SHOP_ID}/products.json?limit=50&page=${currentPage}`;
+      const res = await fetch(url, {
+        headers: { 'Authorization': `Bearer ${PRINTIFY_TOKEN}`, 'Content-Type': 'application/json' }
+      });
+      const data = await res.json();
+      allProducts = [...allProducts, ...(data.data || [])];
+      lastPage = data.last_page || 1;
+      currentPage++;
+    } while (currentPage <= lastPage);
 
-    if (!printifyProducts || printifyProducts.length === 0) {
-      return NextResponse.json({ error: 'No products returned from Printify.' }, { status: 400 });
-    }
-
-    // 3. Format the data to match our Supabase columns perfectly
-    const formattedProducts = printifyProducts.map(product => ({
-      id: product.id,
-      title: product.name || product.title,
-      slug: product.slug || product.id,
-      description: product.description || '',
-      price: parseFloat(product.price) || 0,
-      price_html: product.price_html || '',
-      images: product.images || [],
-      categories: product.categories || [],
-      variants: product.variants || [],
-      options: product.options || [],
-      visible: product.visible !== false // Default to true unless explicitly hidden
+    // 2. Format it to perfectly match our Supabase Columns
+    const formattedProducts = allProducts.map(p => ({
+      id: p.id,
+      title: p.title,
+      slug: p.id, 
+      description: p.description,
+      price: p.variants?.[0]?.price || 0,
+      price_html: '',
+      images: p.images || [],
+      categories: p.tags || [], // We save the raw tags into the categories column
+      variants: p.variants || [],
+      options: p.options || [],
+      visible: p.visible !== false
     }));
 
-    // 4. Initialize Supabase
+    // 3. Save to Supabase
     const supabase = createClient();
+    const { error } = await supabase.from('products').upsert(formattedProducts, { onConflict: 'id' });
+    if (error) throw error;
 
-    // 5. Upsert (Insert or Update) the data into Supabase
-    // 'onConflict: id' means if the product already exists, it will UPDATE it instead of duplicating it!
-    const { data, error } = await supabase
-      .from('products')
-      .upsert(formattedProducts, { onConflict: 'id' });
-
-    if (error) {
-      console.error("Supabase Database Error:", error);
-      throw error;
-    }
-
-    console.log(`Successfully synced ${formattedProducts.length} products!`);
-
-    return NextResponse.json({ 
-      success: true, 
-      message: `Successfully synced ${formattedProducts.length} products to Supabase!`,
-      count: formattedProducts.length
-    });
-
+    return NextResponse.json({ success: true, count: formattedProducts.length });
   } catch (error) {
-    console.error('Catalog Sync Error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

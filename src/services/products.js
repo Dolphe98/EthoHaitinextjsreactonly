@@ -1,16 +1,10 @@
 "use server";
 
-// ============================================================================
-// THE PRINTIFY ENGINE v9.0 (Parallel Fetching Speed Upgrade)
-// ============================================================================
+import { createClient } from '@/lib/supabase';
 
-const PRINTIFY_SHOP_ID = process.env.PRINTIFY_SHOP_ID;
-const PRINTIFY_TOKEN = process.env.PRINTIFY_API_TOKEN;
-
-const HEADERS = {
-  'Authorization': `Bearer ${PRINTIFY_TOKEN}`,
-  'Content-Type': 'application/json'
-};
+// ============================================================================
+// THE SUPABASE ENGINE (Amazon Speed)
+// ============================================================================
 
 const MAIN_CATEGORIES = [
   "men's clothing", "women's clothing", "accessories", "collection"
@@ -39,6 +33,7 @@ function decodeHtml(html) {
     .replace(/&#038;/g, "&");
 }
 
+// EXACT LOGIC KEPT 100% INTACT
 function translateToWooCommerce(p) {
   const activeVariants = p.variants || [];
   const lowestPrice = activeVariants.length > 0 
@@ -127,52 +122,30 @@ function translateToWooCommerce(p) {
 }
 
 export async function fetchAllProducts() {
-  if (!PRINTIFY_SHOP_ID || !PRINTIFY_TOKEN) return [];
-
   try {
-    // 1. Fetch the very first page to see how many total pages exist
-    const firstPageUrl = `https://api.printify.com/v1/shops/${PRINTIFY_SHOP_ID}/products.json?limit=50&page=1`;
-    const firstRes = await fetch(firstPageUrl, { 
-      headers: HEADERS, 
-      next: { revalidate: 3600 } 
-    });
+    const supabase = createClient();
     
-    if (!firstRes.ok) throw new Error(`Printify API Error: ${firstRes.status}`);
-    
-    const firstData = await firstRes.json();
-    let allProducts = firstData.data || [];
-    const lastPage = firstData.last_page || 1;
+    // 1. Fetch everything instantly from Supabase instead of waiting on Printify
+    const { data, error } = await supabase.from('products').select('*').eq('visible', true);
+    if (error) throw error;
 
-    // 2. MANAGER FIX: If there are more pages, fetch them ALL AT THE SAME TIME (Parallel)
-    if (lastPage > 1) {
-      const fetchPromises = [];
-      
-      for (let i = 2; i <= lastPage; i++) {
-        const url = `https://api.printify.com/v1/shops/${PRINTIFY_SHOP_ID}/products.json?limit=50&page=${i}`;
-        
-        // Push the fetch request into an array without waiting for it to finish yet
-        fetchPromises.push(
-          fetch(url, { headers: HEADERS, next: { revalidate: 3600 } })
-            .then(res => res.json())
-            .then(data => data.data || [])
-        );
-      }
-
-      // Promise.all fires every request in the array simultaneously!
-      const remainingPagesData = await Promise.all(fetchPromises);
-      
-      // Combine all the data together
-      remainingPagesData.forEach(pageProducts => {
-        allProducts = [...allProducts, ...pageProducts];
-      });
-    }
+    // 2. Reconstruct the raw Printify object format
+    const rawPrintifyData = data.map(dbRow => ({
+      id: dbRow.id,
+      title: dbRow.title,
+      description: dbRow.description,
+      images: dbRow.images || [],
+      variants: dbRow.variants || [],
+      options: dbRow.options || [],
+      tags: dbRow.categories || [] // We saved tags into the categories column
+    }));
     
-    // We filter for active variants to keep the store clean
-    const activeProducts = allProducts.filter(p => p.variants && p.variants.length > 0);
+    // 3. Filter and translate using your exact logic!
+    const activeProducts = rawPrintifyData.filter(p => p.variants && p.variants.length > 0);
     return activeProducts.map(translateToWooCommerce);
     
   } catch (error) {
-    console.error("Fetch failed:", error);
+    console.error("Supabase fetch failed:", error);
     return [];
   }
 }
