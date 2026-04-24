@@ -1,10 +1,16 @@
 "use server";
 
-import { createClient } from '@/lib/supabase';
+// ============================================================================
+// THE PRINTIFY ENGINE v9.0 (Parallel Fetching & Static Generation Ready)
+// ============================================================================
 
-// ============================================================================
-// THE SUPABASE ENGINE (Strict Description-Tagging Version)
-// ============================================================================
+const PRINTIFY_SHOP_ID = process.env.PRINTIFY_SHOP_ID;
+const PRINTIFY_TOKEN = process.env.PRINTIFY_API_TOKEN;
+
+const HEADERS = {
+  'Authorization': `Bearer ${PRINTIFY_TOKEN}`,
+  'Content-Type': 'application/json'
+};
 
 const MAIN_CATEGORIES = [
   "men's clothing", "women's clothing", "accessories", "collection"
@@ -33,7 +39,6 @@ function decodeHtml(html) {
     .replace(/&#038;/g, "&");
 }
 
-// 100% YOUR ORIGINAL LOGIC - NO MODIFICATIONS
 function translateToWooCommerce(p) {
   const activeVariants = p.variants || [];
   const lowestPrice = activeVariants.length > 0 
@@ -122,29 +127,42 @@ function translateToWooCommerce(p) {
 }
 
 export async function fetchAllProducts() {
-  try {
-    const supabase = createClient();
-    
-    // 1. Fetch instantly from Supabase Database
-    const { data, error } = await supabase.from('products').select('*').eq('visible', true);
-    if (error) throw error;
+  if (!PRINTIFY_SHOP_ID || !PRINTIFY_TOKEN) return [];
 
-    // 2. Reconstruct ONLY what your UI strictly needs so we don't accidentally import Printify's hidden junk tags
-    const rawPrintifyData = data.map(dbRow => ({
-      id: dbRow.id,
-      title: dbRow.title,
-      description: dbRow.description, // THIS is where your "Categories:..." trick lives!
-      images: dbRow.images || [],
-      variants: dbRow.variants || [],
-      options: dbRow.options || []
-    }));
+  try {
+    const firstPageUrl = `https://api.printify.com/v1/shops/${PRINTIFY_SHOP_ID}/products.json?limit=50&page=1`;
+    const firstRes = await fetch(firstPageUrl, { 
+      headers: HEADERS, 
+      next: { revalidate: 3600 } 
+    });
     
-    // 3. Filter and translate using your exact logic
-    const activeProducts = rawPrintifyData.filter(p => p.variants && p.variants.length > 0);
+    if (!firstRes.ok) throw new Error(`Printify API Error: ${firstRes.status}`);
+    
+    const firstData = await firstRes.json();
+    let allProducts = firstData.data || [];
+    const lastPage = firstData.last_page || 1;
+
+    if (lastPage > 1) {
+      const fetchPromises = [];
+      for (let i = 2; i <= lastPage; i++) {
+        const url = `https://api.printify.com/v1/shops/${PRINTIFY_SHOP_ID}/products.json?limit=50&page=${i}`;
+        fetchPromises.push(
+          fetch(url, { headers: HEADERS, next: { revalidate: 3600 } })
+            .then(res => res.json())
+            .then(data => data.data || [])
+        );
+      }
+      const remainingPagesData = await Promise.all(fetchPromises);
+      remainingPagesData.forEach(pageProducts => {
+        allProducts = [...allProducts, ...pageProducts];
+      });
+    }
+    
+    const activeProducts = allProducts.filter(p => p.variants && p.variants.length > 0);
     return activeProducts.map(translateToWooCommerce);
     
   } catch (error) {
-    console.error("Supabase fetch failed:", error);
+    console.error("Fetch failed:", error);
     return [];
   }
 }

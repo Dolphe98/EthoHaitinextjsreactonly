@@ -121,3 +121,24 @@ export default async function CategoryPage({ params }) {
     </main>
   );
 }
+
+// ============================================================================
+// MANAGER FIX: STATIC SITE GENERATION (The Amazon Speed Secret)
+// ============================================================================
+// This function tells Vercel to pre-build EVERY category page during deployment.
+// When a user clicks a category, Vercel just hands them the pre-made HTML in 50ms.
+export async function generateStaticParams() {
+  try {
+    const categories = await fetchAllCategories();
+    
+    if (!categories || categories.length === 0) return [];
+    
+    // Return an array of slug objects for Vercel to build
+    return categories.map((category) => ({
+      slug: category.slug,
+    }));
+  } catch (error) {
+    console.error("Failed to generate static params for categories:", error);
+    return [];
+  }
+}

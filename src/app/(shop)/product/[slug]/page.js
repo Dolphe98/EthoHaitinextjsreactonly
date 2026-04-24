@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import ProductInteractive from '@/components/product/ProductInteractive';
-import { fetchProductBySlug, fetchProductsByCategory } from '@/services/products'; // NEW ENGINE IMPORT
+import { fetchProductBySlug, fetchProductsByCategory, fetchAllProducts } from '@/services/products'; // Added fetchAllProducts for Static Generation
 
 // MANAGER FIX: Removed 'force-dynamic' which rebuilt the page for every user.
 // Added 'revalidate = 3600' (ISR) to cache the page at the Edge and update hourly.
@@ -107,4 +107,25 @@ export default async function ProductPage({ params }) {
       
     </main>
   );
+}
+
+// ============================================================================
+// MANAGER FIX: STATIC SITE GENERATION (The Amazon Speed Secret)
+// ============================================================================
+// This function tells Vercel to pre-build EVERY product page during deployment.
+// When a user clicks a product, Vercel hands them the pre-made HTML instantly.
+export async function generateStaticParams() {
+  try {
+    const products = await fetchAllProducts();
+    
+    if (!products || products.length === 0) return [];
+    
+    // Return an array of slug objects for Vercel to build
+    return products.map((product) => ({
+      slug: product.slug,
+    }));
+  } catch (error) {
+    console.error("Failed to generate static params for products:", error);
+    return [];
+  }
 }
