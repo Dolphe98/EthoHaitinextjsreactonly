@@ -1,112 +1,53 @@
 "use client";
 
-import { useEffect, useState } from 'react';
-import { useAuthStore } from '@/store/authStore';
-import { useWishlist } from '@/hooks/useWishlist';
-import { useCartStore } from '@/store/cartStore';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 
-export default function WishlistPage() {
-  const { token } = useAuthStore();
-  const { wishlist, removeFromWishlist } = useWishlist();
-  const addToCart = useCartStore((state) => state.addToCart);
-  const router = useRouter();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-    if (!token) {
-      router.push('/account');
-    }
-  }, [token, router]);
-
-  if (!mounted || !token) return <div className="pt-32 min-h-screen bg-ethoBg"></div>;
-
-  const handleMoveToCart = (item) => {
-    // We pass the base item to the cart (they will select specific sizes/colors on checkout if needed)
-    addToCart({
-      id: item.id,
-      cartItemId: `${item.id}-base`,
-      name: item.name,
-      price: item.price || 0,
-      price_html: item.price_html,
-      image: item.images?.[0]?.src || "https://placehold.co/80x80?text=No+Image",
-      quantity: 1
-    });
-    // Remove it from the wishlist since they intend to buy it
-    removeFromWishlist(item.id);
-  };
-
+export default function WishlistComingSoon() {
   return (
-    <main className="pt-32 pb-20 min-h-screen bg-ethoBg">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+    <main className="pt-32 pb-20 min-h-screen bg-ethoBg flex items-center justify-center">
+      <div className="max-w-md mx-auto px-4 text-center">
         
-        <nav className="text-sm text-gray-500 mb-8 font-medium">
-          <Link href="/account" className="hover:text-haitiBlue transition-colors">Your Account</Link>
-          <span className="mx-2">›</span>
-          <span className="text-ethoDark">Your Wishlist</span>
-        </nav>
-
-        <div className="flex flex-col sm:flex-row justify-between items-center mb-8">
-           <h1 className="text-3xl font-extrabold text-ethoDark">Your Wishlist</h1>
-           
-           {/* The Share Button Concept */}
-           {wishlist.length > 0 && (
-             <button onClick={() => alert('Shareable link generation coming in Phase 3!')} className="mt-4 sm:mt-0 flex items-center gap-2 text-haitiBlue font-bold hover:underline">
-               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 1 0 0 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186 9.566-5.314m-9.566 7.5 9.566 5.314m0 0a2.25 2.25 0 1 0 3.935 2.186 2.25 2.25 0 0 0-3.935-2.186Zm0-12.814a2.25 2.25 0 1 0 3.933-2.185 2.25 2.25 0 0 0-3.933 2.185Z" /></svg>
-               Share this list
-             </button>
-           )}
+        {/* Animated Icon */}
+        <div className="mb-8 relative inline-block">
+          <div className="absolute inset-0 bg-haitiRed rounded-full blur-2xl opacity-20 animate-pulse"></div>
+          <div className="relative bg-white p-6 rounded-full shadow-xl border border-gray-100">
+            <svg 
+              className="w-16 h-16 text-haitiRed" 
+              fill="currentColor" 
+              viewBox="0 0 24 24"
+            >
+              <path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z" />
+            </svg>
+          </div>
         </div>
 
-        {wishlist.length === 0 ? (
-          <div className="bg-white p-12 rounded-xl shadow-sm border border-gray-100 text-center">
-            <svg className="w-20 h-20 text-gray-200 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path></svg>
-            <h2 className="text-2xl font-bold text-ethoDark mb-2">Your list is empty</h2>
-            <p className="text-gray-500 mb-6">Find gear you love and hit the heart icon to save it here.</p>
-            <Link href="/category/clothing" className="bg-haitiBlue text-white px-8 py-3 rounded font-bold hover:bg-opacity-90 transition-colors inline-block">
-              Explore Collections
-            </Link>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {wishlist.map((item) => (
-              <div key={item.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col group relative">
-                
-                <button 
-                  onClick={() => removeFromWishlist(item.id)}
-                  className="absolute top-3 right-3 z-10 bg-white/80 backdrop-blur-sm p-2 rounded-full text-gray-400 hover:text-haitiRed transition-colors shadow-sm"
-                  title="Remove from list"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                </button>
+        {/* Text Content */}
+        <h1 className="text-4xl font-extrabold text-ethoDark mb-4 tracking-tight">
+          Favorites & Wishlists
+        </h1>
+        <p className="text-xl text-haitiBlue font-bold mb-6">
+          Coming Soon to Phase 3
+        </p>
+        <p className="text-gray-500 mb-10 leading-relaxed">
+          We're building a way for you to save your favorite EthoHaiti designs and share them with the world. Stay tuned!
+        </p>
 
-                <div className="relative h-64 bg-gray-100 flex items-center justify-center p-4">
-                   <img 
-                     src={item.images?.[0]?.src || "https://placehold.co/500x500?text=No+Image"} 
-                     alt={item.name} 
-                     className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-500"
-                   />
-                </div>
-                
-                <div className="p-6 flex flex-col flex-grow text-center">
-                  <h3 className="text-lg font-bold text-gray-900 mb-2 line-clamp-2">
-                    {item.name?.replace(/&#8217;/g, "'").replace(/&#8216;/g, "'")}
-                  </h3>
-                  <div className="text-haitiBlue font-extrabold mb-4" dangerouslySetInnerHTML={{ __html: item.price_html || "" }}></div>
-                  
-                  <button 
-                    onClick={() => handleMoveToCart(item)}
-                    className="mt-auto w-full bg-ethoDark hover:bg-black text-white font-bold py-3 rounded transition-colors shadow-md"
-                  >
-                    Move to Cart
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+        {/* Action Button */}
+        <div className="flex flex-col gap-4">
+          <Link 
+            href="/" 
+            className="w-full bg-haitiRed text-white py-4 rounded-xl font-extrabold text-lg shadow-lg hover:bg-red-700 transition-all active:scale-95"
+          >
+            Continue Shopping
+          </Link>
+          <Link 
+            href="/account" 
+            className="text-gray-500 font-bold hover:text-ethoDark transition-colors"
+          >
+            Back to My Account
+          </Link>
+        </div>
+
       </div>
     </main>
   );

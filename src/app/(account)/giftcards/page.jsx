@@ -1,85 +1,53 @@
 "use client";
 
-import { useEffect, useState } from 'react';
-import { useAuthStore } from '@/store/authStore';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 
-export default function GiftCardsPage() {
-  const { token } = useAuthStore();
-  const router = useRouter();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-    if (!token) {
-      router.push('/account');
-    }
-  }, [token, router]);
-
-  if (!mounted || !token) return <div className="pt-32 min-h-screen bg-ethoBg"></div>;
-
+export default function GiftCardsComingSoon() {
   return (
-    <main className="pt-32 pb-20 min-h-screen bg-ethoBg">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+    <main className="pt-32 pb-20 min-h-screen bg-ethoBg flex items-center justify-center">
+      <div className="max-w-md mx-auto px-4 text-center">
         
-        {/* Breadcrumb Navigation */}
-        <nav className="text-sm text-gray-500 mb-8 font-medium">
-          <Link href="/account" className="hover:text-haitiBlue transition-colors">Your Account</Link>
-          <span className="mx-2">›</span>
-          <span className="text-ethoDark">Gift Cards</span>
-        </nav>
-
-        <h1 className="text-4xl font-extrabold text-ethoDark mb-4">EthoHaiti Gift Cards</h1>
-        <p className="text-xl text-gray-600 mb-10">Give the gift of culture. Perfect for any occasion.</p>
-
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          
-          {/* Header Banner */}
-          <div className="bg-ethoDark p-8 text-center border-b-4 border-haitiRed">
-             <svg className="w-16 h-16 text-white mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7"></path></svg>
-             <h2 className="text-2xl font-bold text-white">Digital Gift Cards</h2>
-             <p className="text-gray-300 mt-2">Delivered instantly via email.</p>
+        {/* Animated Gift Icon */}
+        <div className="mb-8 relative inline-block">
+          <div className="absolute inset-0 bg-haitiBlue rounded-full blur-2xl opacity-20 animate-pulse"></div>
+          <div className="relative bg-white p-6 rounded-full shadow-xl border border-gray-100">
+            <svg 
+              className="w-16 h-16 text-haitiBlue" 
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24" 
+              strokeWidth="1.5"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 11.25v8.25a1.5 1.5 0 01-1.5 1.5H4.5a1.5 1.5 0 01-1.5-1.5v-8.25M12 4.875A2.625 2.625 0 109.375 7.5H12m0-2.625V7.5m0-2.625A2.625 2.625 0 1114.625 7.5H12m0 0V21m-8.625-9.75h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+            </svg>
           </div>
+        </div>
 
-          <div className="p-8 sm:p-10 prose prose-lg text-gray-600 max-w-none">
-            <h3 className="text-2xl font-bold text-ethoDark border-b-2 border-gray-100 pb-4 mb-6 mt-4">How it Works</h3>
-            
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 mb-8">
-               <div className="bg-gray-50 p-6 rounded-lg border border-gray-100">
-                  <h4 className="font-bold text-ethoDark text-lg mb-2">Sending a Gift</h4>
-                  <p className="text-sm">
-                    Select your desired amount, enter the recipient's email address, and add a custom message. They will receive an email with a unique code that never expires.
-                  </p>
-               </div>
-               <div className="bg-gray-50 p-6 rounded-lg border border-gray-100">
-                  <h4 className="font-bold text-ethoDark text-lg mb-2">Redeeming a Gift</h4>
-                  <p className="text-sm">
-                    If you received a gift card, simply shop the store normally. During checkout, enter your unique gift card code in the "Discount / Gift Card" box to instantly apply your balance.
-                  </p>
-               </div>
-            </div>
+        {/* Text Content */}
+        <h1 className="text-4xl font-extrabold text-ethoDark mb-4 tracking-tight">
+          EthoHaiti Gift Cards
+        </h1>
+        <p className="text-xl text-haitiRed font-bold mb-6">
+          Coming Soon to Phase 3
+        </p>
+        <p className="text-gray-500 mb-10 leading-relaxed">
+          The perfect way to share Haitian culture. We’re working on a digital gift card system that will allow you to send instant, personalized gear to your friends and family.
+        </p>
 
-            <h3 className="text-xl font-bold text-ethoDark mb-4 mt-8">Check Your Balance</h3>
-            <p className="text-sm mb-6">
-              Need to know how much is left on your card? Enter your code below.
-            </p>
-            
-            {/* Fake Balance Checker for UI */}
-            <div className="flex gap-2 max-w-md">
-              <input type="text" placeholder="Enter Gift Card Code" className="flex-grow border border-gray-300 rounded px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-haitiBlue" />
-              <button onClick={() => alert("Gift Card integration coming soon!")} className="bg-haitiBlue hover:bg-blue-800 text-white font-bold py-3 px-6 rounded transition-colors">
-                Check
-              </button>
-            </div>
-
-            <div className="mt-12 text-center">
-              <button onClick={() => alert("Gift Card purchasing coming soon!")} className="inline-block bg-haitiRed hover:bg-red-700 text-white font-extrabold py-4 px-10 rounded shadow-md transition-colors text-lg">
-                Buy a Gift Card Now
-              </button>
-            </div>
-            
-          </div>
+        {/* Action Buttons */}
+        <div className="flex flex-col gap-4">
+          <Link 
+            href="/" 
+            className="w-full bg-haitiBlue text-white py-4 rounded-xl font-extrabold text-lg shadow-lg hover:bg-blue-800 transition-all active:scale-95"
+          >
+            Continue Shopping
+          </Link>
+          <Link 
+            href="/account" 
+            className="text-gray-500 font-bold hover:text-ethoDark transition-colors"
+          >
+            Back to My Account
+          </Link>
         </div>
 
       </div>

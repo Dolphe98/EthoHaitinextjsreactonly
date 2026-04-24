@@ -1,17 +1,14 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import ProductInteractive from '@/components/product/ProductInteractive';
-import { fetchProductBySlug, fetchProductsByCategory, fetchAllProducts } from '@/services/products'; // Added fetchAllProducts for Static Generation
+import { fetchProductBySlug, fetchProductsByCategory, fetchAllProducts } from '@/services/products';
 
-// MANAGER FIX: Removed 'force-dynamic' which rebuilt the page for every user.
-// Added 'revalidate = 3600' (ISR) to cache the page at the Edge and update hourly.
 export const revalidate = 3600;
 
 export default async function ProductPage({ params }) {
   const resolvedParams = await params;
   const slug = resolvedParams.slug;
 
-  // 1. Fetch the exact product using Printify Engine
   const products = await fetchProductBySlug(slug);
 
   if (!products || products.length === 0) {
@@ -27,32 +24,21 @@ export default async function ProductPage({ params }) {
   const product = products[0];
   const cleanName = product.name?.replace(/&#8217;/g, "'").replace(/&#8216;/g, "'").replace(/&amp;/g, "&").replace(/&#038;/g, "&") || "Product";
 
-  // ==========================================
-  // 2. THE AMAZON SMART CROSS-SELL ALGORITHM
-  // ==========================================
   let similarProducts = [];
   if (product.categories && product.categories.length > 0) {
-    // Grab the main category of this shirt
     const targetCategorySlug = product.categories[0].slug;
-
-    // Fetch products from the same category
     const simData = await fetchProductsByCategory(targetCategorySlug);
-    
     if (Array.isArray(simData) && simData.length > 0) {
-      // Filter out the exact product we are currently looking at
       const filtered = simData.filter(p => p.id !== product.id);
-      
-      // Randomly shuffle so it feels dynamic and fresh
       const shuffled = filtered.sort(() => 0.5 - Math.random());
-      
-      // Pick the top 3
       similarProducts = shuffled.slice(0, 3);
     }
   }
 
   return (
     <main className="pt-32 pb-20 bg-ethoBg min-h-screen">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      {/* MANAGER FIX: Expanded width to max-w-[1400px] to support 4-Column Layout */}
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
         
         <nav className="text-sm text-gray-500 mb-8 font-medium">
           <Link href="/" className="hover:text-haitiBlue transition-colors">Home</Link>
@@ -74,7 +60,7 @@ export default async function ProductPage({ params }) {
 
       {similarProducts.length > 0 && (
         <div className="mt-24 pt-16 border-t border-gray-200 bg-gray-50">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
             <h2 className="text-2xl font-extrabold text-ethoDark mb-8 text-center border-b-4 border-haitiRed inline-block pb-2">
               Customers Also Bought
             </h2>
@@ -83,7 +69,6 @@ export default async function ProductPage({ params }) {
               {similarProducts.map(simProduct => (
                 <Link href={`/product/${simProduct.slug}`} key={simProduct.id} className="bg-white rounded-lg shadow hover:shadow-2xl transition-all duration-300 overflow-hidden group flex flex-col">
                   <div className="relative h-72 bg-gray-100 flex items-center justify-center p-4">
-                     {/* MANAGER FIX: Replaced raw <img> with Next.js <Image /> for optimized WebP delivery */}
                      <Image 
                        src={simProduct.images?.[0]?.src || "https://placehold.co/500x500/png?text=No+Image"} 
                        alt={simProduct.name || "Product Image"}
@@ -109,21 +94,11 @@ export default async function ProductPage({ params }) {
   );
 }
 
-// ============================================================================
-// MANAGER FIX: STATIC SITE GENERATION (The Amazon Speed Secret)
-// ============================================================================
-// This function tells Vercel to pre-build EVERY product page during deployment.
-// When a user clicks a product, Vercel hands them the pre-made HTML instantly.
 export async function generateStaticParams() {
   try {
     const products = await fetchAllProducts();
-    
     if (!products || products.length === 0) return [];
-    
-    // Return an array of slug objects for Vercel to build
-    return products.map((product) => ({
-      slug: product.slug,
-    }));
+    return products.map((product) => ({ slug: product.slug }));
   } catch (error) {
     console.error("Failed to generate static params for products:", error);
     return [];
