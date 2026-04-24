@@ -137,10 +137,12 @@ export async function fetchAllProducts() {
     // THE FIX: Fetch 50 items at a time, looping until we hit the last page!
     do {
       const url = `https://api.printify.com/v1/shops/${PRINTIFY_SHOP_ID}/products.json?limit=50&page=${currentPage}`;
-      // MANAGER FIX: Swapped 'no-store' for a 15-minute background cache (900 seconds)
+      
+      // MANAGER FIX: Bumping cache from 900 (15m) to 3600 (1hr) to maximize speed 
+      // and prevent Printify API rate limits while browsing.
       const res = await fetch(url, { 
         headers: HEADERS, 
-        next: { revalidate: 900 } 
+        next: { revalidate: 3600 } 
       });
       
       if (!res.ok) throw new Error(`Printify API Error: ${res.status}`);
