@@ -2,6 +2,13 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { fetchAllCategories, fetchProductsByCategory } from '@/services/products';
 
+// HELPER FUNCTION: Forces URLs to have https:// so Vercel doesn't throw a 400 error
+const getSafeImageUrl = (url) => {
+  if (!url) return "https://placehold.co/500x500.png?text=No+Image";
+  if (url.startsWith('//')) return `https:${url}`;
+  return url;
+};
+
 export default async function AlternatingCategoryGrid() {
   const allCategories = await fetchAllCategories();
 
@@ -123,14 +130,14 @@ export default async function AlternatingCategoryGrid() {
             {/* OPTIMIZED NEXT.JS IMAGE WRAPPER */}
             <div className="relative h-72 bg-gray-100 overflow-hidden">
               <Image 
-                src={category.img2 || "https://placehold.co/500x500.png?text=No+Image"} 
+                src={getSafeImageUrl(category.img2)} 
                 alt={`${category.name} Flat`} 
                 fill
                 sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
                 className="object-contain p-4" 
               />
               <Image 
-                src={category.img1 || "https://placehold.co/500x500.png?text=No+Image"} 
+                src={getSafeImageUrl(category.img1)} 
                 alt={`${category.name} Mockup`} 
                 fill
                 sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"

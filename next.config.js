@@ -4,22 +4,8 @@ const nextConfig = {
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: 'backend.ethohaiti.com',
-        port: '',
-        pathname: '/**',
+        hostname: '**', // This wildcard allows Vercel to optimize ANY secure image
       },
-      {
-        protocol: 'https',
-        hostname: 'images.printify.com', 
-        port: '',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'placehold.co', 
-        port: '',
-        pathname: '/**',
-      }
     ],
   },
 };
