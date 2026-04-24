@@ -1,7 +1,7 @@
 "use server";
 
 // ============================================================================
-// THE PRINTIFY ENGINE v8.0 (The Pagination Fix)
+// THE PRINTIFY ENGINE v9.0 (Parallel Fetching Speed Upgrade)
 // ============================================================================
 
 const PRINTIFY_SHOP_ID = process.env.PRINTIFY_SHOP_ID;
@@ -130,34 +130,44 @@ export async function fetchAllProducts() {
   if (!PRINTIFY_SHOP_ID || !PRINTIFY_TOKEN) return [];
 
   try {
-    let allProducts = [];
-    let currentPage = 1;
-    let lastPage = 1;
-
-    // THE FIX: Fetch 50 items at a time, looping until we hit the last page!
-    do {
-      const url = `https://api.printify.com/v1/shops/${PRINTIFY_SHOP_ID}/products.json?limit=50&page=${currentPage}`;
-      
-      // MANAGER FIX: Bumping cache from 900 (15m) to 3600 (1hr) to maximize speed 
-      // and prevent Printify API rate limits while browsing.
-      const res = await fetch(url, { 
-        headers: HEADERS, 
-        next: { revalidate: 3600 } 
-      });
-      
-      if (!res.ok) throw new Error(`Printify API Error: ${res.status}`);
-      
-      const data = await res.json();
-      const pageProducts = data.data || [];
-      
-      // Glue the new products to our master list
-      allProducts = [...allProducts, ...pageProducts];
-      
-      lastPage = data.last_page || 1;
-      currentPage++;
-    } while (currentPage <= lastPage);
+    // 1. Fetch the very first page to see how many total pages exist
+    const firstPageUrl = `https://api.printify.com/v1/shops/${PRINTIFY_SHOP_ID}/products.json?limit=50&page=1`;
+    const firstRes = await fetch(firstPageUrl, { 
+      headers: HEADERS, 
+      next: { revalidate: 3600 } 
+    });
     
-    // We filter for active variants to keep the store clean, ignoring Printify's unpublished glitch
+    if (!firstRes.ok) throw new Error(`Printify API Error: ${firstRes.status}`);
+    
+    const firstData = await firstRes.json();
+    let allProducts = firstData.data || [];
+    const lastPage = firstData.last_page || 1;
+
+    // 2. MANAGER FIX: If there are more pages, fetch them ALL AT THE SAME TIME (Parallel)
+    if (lastPage > 1) {
+      const fetchPromises = [];
+      
+      for (let i = 2; i <= lastPage; i++) {
+        const url = `https://api.printify.com/v1/shops/${PRINTIFY_SHOP_ID}/products.json?limit=50&page=${i}`;
+        
+        // Push the fetch request into an array without waiting for it to finish yet
+        fetchPromises.push(
+          fetch(url, { headers: HEADERS, next: { revalidate: 3600 } })
+            .then(res => res.json())
+            .then(data => data.data || [])
+        );
+      }
+
+      // Promise.all fires every request in the array simultaneously!
+      const remainingPagesData = await Promise.all(fetchPromises);
+      
+      // Combine all the data together
+      remainingPagesData.forEach(pageProducts => {
+        allProducts = [...allProducts, ...pageProducts];
+      });
+    }
+    
+    // We filter for active variants to keep the store clean
     const activeProducts = allProducts.filter(p => p.variants && p.variants.length > 0);
     return activeProducts.map(translateToWooCommerce);
     
