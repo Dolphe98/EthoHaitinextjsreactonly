@@ -3,7 +3,7 @@
 import { createClient } from '@/lib/supabase';
 
 // ============================================================================
-// THE SUPABASE ENGINE (Amazon-Level Speed)
+// THE SUPABASE ENGINE (Strict Description-Tagging Version)
 // ============================================================================
 
 const MAIN_CATEGORIES = [
@@ -33,6 +33,7 @@ function decodeHtml(html) {
     .replace(/&#038;/g, "&");
 }
 
+// 100% YOUR ORIGINAL LOGIC - NO MODIFICATIONS
 function translateToWooCommerce(p) {
   const activeVariants = p.variants || [];
   const lowestPrice = activeVariants.length > 0 
@@ -76,18 +77,11 @@ function translateToWooCommerce(p) {
   let decodedDesc = decodeHtml(rawDesc);
   let pTags = [];
 
-  // MANAGER FIX: Safely grab the Printify tags we synced to Supabase first
-  if (p.tags && Array.isArray(p.tags)) {
-      pTags = p.tags.map(t => t.toLowerCase().trim());
-  }
-
-  // Fallback: Check the description using your original regex
   const catRegex = /Categories:\s*([^<\n]+)/i; 
   const match = decodedDesc.match(catRegex);
 
   if (match && match[1]) {
-      const descTags = match[1].split(',').map(s => s.trim().toLowerCase());
-      pTags = [...new Set([...pTags, ...descTags])]; // Merge and remove duplicates
+      pTags = match[1].split(',').map(s => s.trim().toLowerCase());
       rawDesc = rawDesc.replace(/<p>[^<]*Categories:\s*[^<]*<\/p>/gi, ''); 
       rawDesc = rawDesc.replace(/Categories:\s*([^<\n]+)/gi, ''); 
   }
@@ -135,15 +129,14 @@ export async function fetchAllProducts() {
     const { data, error } = await supabase.from('products').select('*').eq('visible', true);
     if (error) throw error;
 
-    // 2. Reconstruct the raw Printify object format so your UI doesn't break
+    // 2. Reconstruct ONLY what your UI strictly needs so we don't accidentally import Printify's hidden junk tags
     const rawPrintifyData = data.map(dbRow => ({
       id: dbRow.id,
       title: dbRow.title,
-      description: dbRow.description,
+      description: dbRow.description, // THIS is where your "Categories:..." trick lives!
       images: dbRow.images || [],
       variants: dbRow.variants || [],
-      options: dbRow.options || [],
-      tags: dbRow.categories || [] // Push the categories column back into 'tags'
+      options: dbRow.options || []
     }));
     
     // 3. Filter and translate using your exact logic
