@@ -3,7 +3,7 @@
 import { createClient } from '@/lib/supabase';
 
 // ============================================================================
-// THE SUPABASE ENGINE (Amazon Speed)
+// THE SUPABASE ENGINE (Amazon-Level Speed)
 // ============================================================================
 
 const MAIN_CATEGORIES = [
@@ -33,7 +33,6 @@ function decodeHtml(html) {
     .replace(/&#038;/g, "&");
 }
 
-// EXACT LOGIC KEPT 100% INTACT
 function translateToWooCommerce(p) {
   const activeVariants = p.variants || [];
   const lowestPrice = activeVariants.length > 0 
@@ -77,11 +76,18 @@ function translateToWooCommerce(p) {
   let decodedDesc = decodeHtml(rawDesc);
   let pTags = [];
 
+  // MANAGER FIX: Safely grab the Printify tags we synced to Supabase first
+  if (p.tags && Array.isArray(p.tags)) {
+      pTags = p.tags.map(t => t.toLowerCase().trim());
+  }
+
+  // Fallback: Check the description using your original regex
   const catRegex = /Categories:\s*([^<\n]+)/i; 
   const match = decodedDesc.match(catRegex);
 
   if (match && match[1]) {
-      pTags = match[1].split(',').map(s => s.trim().toLowerCase());
+      const descTags = match[1].split(',').map(s => s.trim().toLowerCase());
+      pTags = [...new Set([...pTags, ...descTags])]; // Merge and remove duplicates
       rawDesc = rawDesc.replace(/<p>[^<]*Categories:\s*[^<]*<\/p>/gi, ''); 
       rawDesc = rawDesc.replace(/Categories:\s*([^<\n]+)/gi, ''); 
   }
@@ -125,11 +131,11 @@ export async function fetchAllProducts() {
   try {
     const supabase = createClient();
     
-    // 1. Fetch everything instantly from Supabase instead of waiting on Printify
+    // 1. Fetch instantly from Supabase Database
     const { data, error } = await supabase.from('products').select('*').eq('visible', true);
     if (error) throw error;
 
-    // 2. Reconstruct the raw Printify object format
+    // 2. Reconstruct the raw Printify object format so your UI doesn't break
     const rawPrintifyData = data.map(dbRow => ({
       id: dbRow.id,
       title: dbRow.title,
@@ -137,10 +143,10 @@ export async function fetchAllProducts() {
       images: dbRow.images || [],
       variants: dbRow.variants || [],
       options: dbRow.options || [],
-      tags: dbRow.categories || [] // We saved tags into the categories column
+      tags: dbRow.categories || [] // Push the categories column back into 'tags'
     }));
     
-    // 3. Filter and translate using your exact logic!
+    // 3. Filter and translate using your exact logic
     const activeProducts = rawPrintifyData.filter(p => p.variants && p.variants.length > 0);
     return activeProducts.map(translateToWooCommerce);
     
