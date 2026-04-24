@@ -18,7 +18,37 @@ export default function AffiliatesPage() {
     }
   }, [token, router]);
 
-  if (!mounted || !token) return <div className="pt-32 min-h-screen bg-ethoBg"></div>;
+  // MANAGER FIX: Replaced "white screen of death" with a High-Fidelity Skeleton Loader
+  if (!mounted || !token) {
+    return (
+      <main className="pt-32 pb-20 min-h-screen bg-ethoBg">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 animate-pulse">
+          {/* Breadcrumb Skeleton */}
+          <div className="h-4 bg-gray-200 rounded w-48 mb-8"></div>
+          
+          {/* Title & Subtitle Skeleton */}
+          <div className="h-10 bg-gray-200 rounded w-3/4 mb-4"></div>
+          <div className="h-6 bg-gray-200 rounded w-1/2 mb-10"></div>
+
+          {/* Main Content Box Skeleton */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 sm:p-10">
+            {/* Video Placeholder Skeleton */}
+            <div className="w-full aspect-video bg-gray-200 rounded-xl mb-10"></div>
+            
+            {/* Quick Links Box Skeleton */}
+            <div className="h-48 bg-gray-100 rounded-xl mb-12"></div>
+            
+            {/* Text Content Skeleton */}
+            <div className="space-y-4">
+              <div className="h-4 bg-gray-200 rounded w-full"></div>
+              <div className="h-4 bg-gray-200 rounded w-5/6"></div>
+              <div className="h-4 bg-gray-200 rounded w-4/6"></div>
+            </div>
+          </div>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="pt-32 pb-20 min-h-screen bg-ethoBg">

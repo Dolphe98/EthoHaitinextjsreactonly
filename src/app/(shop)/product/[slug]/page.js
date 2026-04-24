@@ -1,8 +1,11 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import ProductInteractive from '@/components/product/ProductInteractive';
 import { fetchProductBySlug, fetchProductsByCategory } from '@/services/products'; // NEW ENGINE IMPORT
 
-export const dynamic = 'force-dynamic';
+// MANAGER FIX: Removed 'force-dynamic' which rebuilt the page for every user.
+// Added 'revalidate = 3600' (ISR) to cache the page at the Edge and update hourly.
+export const revalidate = 3600;
 
 export default async function ProductPage({ params }) {
   const resolvedParams = await params;
@@ -80,9 +83,12 @@ export default async function ProductPage({ params }) {
               {similarProducts.map(simProduct => (
                 <Link href={`/product/${simProduct.slug}`} key={simProduct.id} className="bg-white rounded-lg shadow hover:shadow-2xl transition-all duration-300 overflow-hidden group flex flex-col">
                   <div className="relative h-72 bg-gray-100 flex items-center justify-center p-4">
-                     <img 
-                       src={simProduct.images?.[0]?.src || "https://placehold.co/500x500?text=No+Image"} 
-                       alt={simProduct.name} 
+                     {/* MANAGER FIX: Replaced raw <img> with Next.js <Image /> for optimized WebP delivery */}
+                     <Image 
+                       src={simProduct.images?.[0]?.src || "https://placehold.co/500x500/png?text=No+Image"} 
+                       alt={simProduct.name || "Product Image"}
+                       width={500}
+                       height={500}
                        className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-500"
                      />
                   </div>

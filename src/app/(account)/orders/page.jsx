@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useAuthStore } from '@/store/authStore';
 import { useCartStore } from '@/store/cartStore';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
 import { formatPrice } from '@/utils/formatPrice';
@@ -83,7 +84,27 @@ export default function OrdersPage() {
     return <span className="px-3 py-1 bg-yellow-100 text-yellow-800 text-xs font-extrabold rounded-full uppercase tracking-wide">In Production</span>;
   };
 
-  if (!mounted) return <div className="pt-32 min-h-screen bg-ethoBg"></div>;
+  // MANAGER FIX: Replaced "white screen of death" with a sleek Skeleton Loader
+  if (!mounted) {
+    return (
+      <main className="pt-32 pb-20 min-h-screen bg-ethoBg">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 animate-pulse">
+          <div className="h-4 bg-gray-200 rounded w-1/4 mb-8"></div>
+          <div className="h-8 bg-gray-200 rounded w-1/3 mb-6"></div>
+          <div className="flex gap-3 mb-8 overflow-x-hidden">
+            <div className="h-10 bg-gray-200 rounded-full w-24"></div>
+            <div className="h-10 bg-gray-200 rounded-full w-28"></div>
+            <div className="h-10 bg-gray-200 rounded-full w-24"></div>
+          </div>
+          <div className="space-y-6">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="bg-white rounded-xl border border-gray-100 h-48 w-full shadow-sm"></div>
+            ))}
+          </div>
+        </div>
+      </main>
+    );
+  }
 
   if (loading) {
     return (
@@ -297,11 +318,15 @@ export default function OrdersPage() {
                           return (
                             <div key={idx} className="relative w-16 h-16 bg-white border border-gray-200 rounded p-1 flex-shrink-0 flex items-center justify-center overflow-hidden">
                               {isItemCanceled && <div className="absolute inset-0 bg-white/60 z-10 backdrop-blur-[1px]"></div>}
-                              {item.image ? (
-                                <img src={item.image} alt={item.name || 'Product'} className="max-h-full max-w-full object-contain" />
-                              ) : (
-                                <div className="w-full h-full bg-gray-100 rounded"></div>
-                              )}
+                              
+                              {/* MANAGER FIX: Replaced native <img> with optimized Next.js <Image /> */}
+                              <Image 
+                                src={item.image || "https://placehold.co/150x150/png?text=No+Image"} 
+                                alt={item.name || 'Product'} 
+                                width={100}
+                                height={100}
+                                className="max-h-full max-w-full object-contain" 
+                              />
                             </div>
                           )
                         })

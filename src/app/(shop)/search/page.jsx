@@ -15,40 +15,46 @@ function SearchContent() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    async function doSearch() {
-      if (!query) {
-        setProducts([]);
-        setSuggestions([]);
-        return;
-      }
-
-      setLoading(true);
-      try {
-        const results = await fetchSearchResults(query, 20);
-        
-        if (results && results.length > 0) {
-          setProducts(results);
-          setSuggestions([]); 
-        } else {
+    // MANAGER FIX: Added a 500ms debounce to prevent API spam on every keystroke
+    const timeoutId = setTimeout(() => {
+      async function doSearch() {
+        if (!query) {
           setProducts([]);
-          
-          // --- MANAGER FIX: Fetch Fallbacks from Printify ---
-          const fallbackData = await fetchAllProducts();
-          if (Array.isArray(fallbackData)) {
-            // Randomize and pick top 4 to show as suggestions
-            const shuffled = fallbackData.sort(() => 0.5 - Math.random());
-            setSuggestions(shuffled.slice(0, 4));
-          }
+          setSuggestions([]);
+          return;
         }
-      } catch (error) {
-        console.error("Error searching products:", error);
-        setProducts([]);
-      } finally {
-        setLoading(false);
-      }
-    }
 
-    doSearch();
+        setLoading(true);
+        try {
+          const results = await fetchSearchResults(query, 20);
+          
+          if (results && results.length > 0) {
+            setProducts(results);
+            setSuggestions([]); 
+          } else {
+            setProducts([]);
+            
+            // --- MANAGER FIX: Fetch Fallbacks from Printify ---
+            const fallbackData = await fetchAllProducts();
+            if (Array.isArray(fallbackData)) {
+              // Randomize and pick top 4 to show as suggestions
+              const shuffled = fallbackData.sort(() => 0.5 - Math.random());
+              setSuggestions(shuffled.slice(0, 4));
+            }
+          }
+        } catch (error) {
+          console.error("Error searching products:", error);
+          setProducts([]);
+        } finally {
+          setLoading(false);
+        }
+      }
+
+      doSearch();
+    }, 500);
+
+    // Cleanup function to clear the timeout if the user keeps typing
+    return () => clearTimeout(timeoutId);
   }, [query]);
 
   return (

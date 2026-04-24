@@ -13,7 +13,34 @@ export default function AccountPage() {
     setMounted(true);
   }, []);
 
-  if (!mounted) return <div className="pt-32 min-h-screen bg-ethoBg"></div>;
+  // MANAGER FIX: Replaced the "white screen of death" with a High-Fidelity Skeleton Loader
+  if (!mounted) {
+    return (
+      <main className="pt-32 pb-20 min-h-screen bg-ethoBg">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 animate-pulse">
+          
+          <div className="flex flex-col md:flex-row justify-between items-center mb-10 border-b border-gray-200 pb-6">
+            <div className="w-full">
+              <div className="h-10 bg-gray-200 rounded w-48 mb-4"></div>
+              <div className="h-4 bg-gray-200 rounded w-64"></div>
+            </div>
+            <div className="mt-4 md:mt-0 h-10 bg-gray-200 rounded w-32"></div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[...Array(7)].map((_, i) => (
+              <div key={i} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex flex-col items-center justify-center min-h-[200px]">
+                <div className="w-16 h-16 bg-gray-100 rounded-full mb-4"></div>
+                <div className="h-6 bg-gray-200 rounded w-32 mb-3"></div>
+                <div className="h-3 bg-gray-200 rounded w-48"></div>
+              </div>
+            ))}
+          </div>
+
+        </div>
+      </main>
+    );
+  }
 
   if (!token) {
     return (
@@ -90,7 +117,8 @@ export default function AccountPage() {
             <h2 className="text-xl font-bold text-ethoDark mb-2">Affiliate Program</h2>
             <p className="text-sm text-gray-500">Earn money by sharing EthoHaiti</p>
           </Link>
-{/* --- MANAGER FIX: Added the Gift Card link --- */}
+
+          {/* --- MANAGER FIX: Added the Gift Card link --- */}
           <Link href="/giftcards" className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex flex-col items-center justify-center min-h-[200px] text-center hover:shadow-lg transition-all group">
             <div className="bg-blue-50 p-4 rounded-full mb-4 group-hover:scale-110 transition-transform">
                <svg className="w-8 h-8 text-haitiBlue" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7"></path></svg>

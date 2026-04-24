@@ -5,6 +5,7 @@ import { useAuthStore } from '@/store/authStore';
 import { useCartStore } from '@/store/cartStore';
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { createClient } from '@/lib/supabase';
 import { formatPrice } from '@/utils/formatPrice';
 
@@ -142,12 +143,38 @@ export default function OrderDetailsPage() {
     setTimeout(() => setToastMessage(''), 3000);
   };
 
+  // MANAGER FIX: Enhanced the loading state into a high-fidelity Skeleton UI
   if (loading) {
     return (
-      <main className="pt-32 pb-20 min-h-screen bg-ethoBg max-w-4xl mx-auto px-4 sm:px-6 animate-pulse">
-        <div className="h-4 w-24 bg-gray-200 rounded mb-8"></div>
-        <div className="h-10 w-64 bg-gray-200 rounded mb-6"></div>
-        <div className="h-32 w-full bg-white border border-gray-100 rounded-xl mb-8"></div>
+      <main className="pt-32 pb-20 min-h-screen bg-ethoBg relative">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 animate-pulse">
+          <div className="h-4 w-24 bg-gray-200 rounded mb-6"></div>
+          <div className="h-10 w-64 bg-gray-200 rounded mb-2"></div>
+          <div className="h-4 w-48 bg-gray-200 rounded mb-6"></div>
+
+          {/* Timeline Skeleton */}
+          <div className="bg-white rounded-xl border border-gray-100 h-32 w-full mb-8 shadow-sm"></div>
+          
+          {/* Items Skeleton */}
+          <div className="bg-white rounded-xl border border-gray-100 w-full mb-8 shadow-sm overflow-hidden">
+            <div className="h-16 border-b border-gray-100 bg-gray-50"></div>
+            <div className="p-6 space-y-4">
+              <div className="flex gap-4 items-center">
+                <div className="w-16 h-16 bg-gray-200 rounded"></div>
+                <div className="space-y-2 flex-grow">
+                  <div className="h-4 w-48 bg-gray-200 rounded"></div>
+                  <div className="h-3 w-24 bg-gray-200 rounded"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Details Skeleton */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="bg-white rounded-xl border border-gray-100 h-48 w-full shadow-sm"></div>
+            <div className="bg-white rounded-xl border border-gray-100 h-48 w-full shadow-sm"></div>
+          </div>
+        </div>
       </main>
     );
   }
@@ -312,7 +339,20 @@ export default function OrderDetailsPage() {
                     <div className="flex items-center gap-4">
                       <div className="w-16 h-16 bg-gray-100 rounded border border-gray-200 flex items-center justify-center overflow-hidden flex-shrink-0 p-1 relative">
                         {isItemCanceled && <div className="absolute inset-0 bg-white/50 z-10 backdrop-blur-[1px]"></div>}
-                        {item.image ? <img src={item.image} alt={item.name} className={`max-w-full max-h-full object-contain ${isItemCanceled ? 'grayscale' : ''}`}/> : <div className="w-full h-full bg-gray-200"></div>}
+                        
+                        {/* MANAGER FIX: Replaced native <img /> with optimized Next.js <Image /> */}
+                        {item.image ? (
+                          <Image 
+                            src={item.image} 
+                            alt={item.name || 'Product'} 
+                            width={100}
+                            height={100}
+                            className={`max-w-full max-h-full object-contain ${isItemCanceled ? 'grayscale' : ''}`}
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-gray-200"></div>
+                        )}
+
                       </div>
                       <div>
                         <p className={`font-bold text-ethoDark text-sm sm:text-base line-clamp-1 ${isItemCanceled ? 'line-through text-gray-400' : ''}`}>
@@ -353,7 +393,7 @@ export default function OrderDetailsPage() {
                   </div>
                 );
               })}
-            </div>
+           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

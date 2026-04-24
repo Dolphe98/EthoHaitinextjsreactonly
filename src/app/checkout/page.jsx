@@ -211,7 +211,57 @@ export default function CheckoutPage() {
   
   const handleGuestChange = (e) => { setGuestForm({ ...guestForm, [e.target.name]: e.target.value }); };
 
-  if (!mounted) return <div className="pt-32 min-h-screen bg-ethoBg"></div>;
+  // MANAGER FIX: Replaced "white screen of death" with a High-Fidelity 2-Column Skeleton Loader
+  if (!mounted) {
+    return (
+      <main className="pt-32 pb-20 min-h-screen bg-ethoBg">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 animate-pulse">
+          <div className="h-10 bg-gray-200 rounded w-64 mb-8 mx-auto lg:mx-0"></div>
+          
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+            {/* Left Column Skeleton (Order Summary) */}
+            <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100 h-fit">
+              <div className="h-8 bg-gray-200 rounded w-48 mb-6"></div>
+              <div className="space-y-4 mb-6">
+                {[1, 2].map(i => (
+                  <div key={i} className="flex gap-4 p-3 bg-gray-50 rounded-lg">
+                    <div className="w-16 h-16 bg-gray-200 rounded"></div>
+                    <div className="flex-1 space-y-2 py-1">
+                      <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                      <div className="h-3 bg-gray-200 rounded w-1/2 mt-2"></div>
+                      <div className="h-4 bg-gray-200 rounded w-1/4 mt-4"></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="border-t border-gray-200 pt-6 space-y-4">
+                <div className="flex justify-between"><div className="h-4 bg-gray-200 rounded w-16"></div><div className="h-4 bg-gray-200 rounded w-16"></div></div>
+                <div className="flex justify-between"><div className="h-4 bg-gray-200 rounded w-20"></div><div className="h-4 bg-gray-200 rounded w-12"></div></div>
+                <div className="flex justify-between mt-4 pt-4 border-t"><div className="h-6 bg-gray-200 rounded w-16"></div><div className="h-6 bg-gray-200 rounded w-20"></div></div>
+              </div>
+            </div>
+
+            {/* Right Column Skeleton (Address/Payment) */}
+            <div className="flex flex-col gap-6">
+              <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100">
+                <div className="h-8 bg-gray-200 rounded w-48 mb-6"></div>
+                <div className="space-y-5">
+                  <div className="h-12 bg-gray-200 rounded w-full"></div>
+                  <div className="h-12 bg-gray-200 rounded w-full"></div>
+                  <div className="grid grid-cols-2 gap-6">
+                    <div className="h-12 bg-gray-200 rounded w-full"></div>
+                    <div className="h-12 bg-gray-200 rounded w-full"></div>
+                  </div>
+                  <div className="h-12 bg-gray-200 rounded w-full"></div>
+                  <div className="h-14 bg-gray-200 rounded w-full mt-4"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    );
+  }
 
   if (paymentSuccess) {
     return (

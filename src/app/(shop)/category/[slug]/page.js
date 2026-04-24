@@ -2,7 +2,10 @@ import Link from 'next/link';
 import { fetchAllCategories, fetchProductsByCategory } from '@/services/products'; 
 import ProductCard from '@/components/product/ProductCard';
 
-export const dynamic = 'force-dynamic';
+// MANAGER FIX: Removed 'force-dynamic' which was forcing a rebuild on every visit.
+// Added 'revalidate = 3600' to enable Incremental Static Regeneration (ISR).
+// This caches the category pages on Vercel's Edge CDN and updates them in the background every hour.
+export const revalidate = 3600;
 
 export default async function CategoryPage({ params }) {
   const resolvedParams = await params;
