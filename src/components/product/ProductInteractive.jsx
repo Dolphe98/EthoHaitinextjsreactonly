@@ -16,7 +16,11 @@ export default function ProductInteractive({ product }) {
   // Gallery States
   const [activeImgIndex, setActiveImgIndex] = useState(0);
   const carouselRef = useRef(null);
-  const images = product.images || [{ src: "https://placehold.co/800x800.png?text=No+Image" }];
+  
+  // MANAGER FIX: Limit images to exactly 4 max. 
+  const images = product.images?.length > 0 
+    ? product.images.slice(0, 4) 
+    : [{ src: "https://placehold.co/800x800.png?text=No+Image" }];
   
   // Cart & Feedback States
   const { cart, addToCart, overwriteCartItem } = useCartStore();
@@ -32,8 +36,10 @@ export default function ProductInteractive({ product }) {
   const [copiedToast, setCopiedToast] = useState(false);
   const [isWhatsAppLoading, setIsWhatsAppLoading] = useState(false);
   
-  // Mobile Description Step Logic (1 = 3 lines, 2 = 6 lines, 3 = full)
+  // Accordion States
   const [descStep, setDescStep] = useState(1);
+  const [accordionOpen, setAccordionOpen] = useState(true);
+  const [sizeTableOpen, setSizeTableOpen] = useState(false);
 
   const colorAttr = product.attributes?.find( a => a.name.toLowerCase() === 'color' || a.name.toLowerCase() === 'colors' );
   const sizeAttr = product.attributes?.find( a => a.name.toLowerCase() === 'size' || a.name.toLowerCase() === 'sizes' );
@@ -42,6 +48,13 @@ export default function ProductInteractive({ product }) {
 
   const [selectedColor, setSelectedColor] = useState(null);
   const [selectedSize, setSelectedSize] = useState(null);
+
+  // MANAGER FIX: Description & Table Parsing
+  const rawDesc = product.description || "No description available.";
+  const tableMatch = rawDesc.match(/<table[\s\S]*?<\/table>/i);
+  const sizeTableHtml = tableMatch ? tableMatch[0] : null;
+  // Remove the table from the main description so it doesn't show twice
+  const mainDescriptionHtml = sizeTableHtml ? rawDesc.replace(/<table[\s\S]*?<\/table>/i, '') : rawDesc;
 
   useEffect(() => {
     if (isEditMode && !hasInitializedEdit) {
@@ -177,7 +190,6 @@ export default function ProductInteractive({ product }) {
     }
   };
 
-  // Description Step Toggle
   const handleDescToggle = () => {
     if (descStep === 1) setDescStep(2);
     else if (descStep === 2) setDescStep(3);
@@ -200,22 +212,27 @@ export default function ProductInteractive({ product }) {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-10">
         
         {/* ========================================== */}
-        {/* COL 1: GALLERY TRACK (STICKY, ~10%)          */}
+        {/* COL 1: GALLERY TRACK (STICKY, ~10%)        */}
+        {/* MANAGER FIX: Only show if > 1 image        */}
         {/* ========================================== */}
-        <div className="hidden lg:flex flex-col gap-3 lg:col-span-1 sticky top-[120px] self-start max-h-[calc(100vh-140px)] overflow-y-auto no-scrollbar pb-4">
-          {images.map((img, index) => (
-            <button 
-              key={index} 
-              onClick={() => {
-                setActiveImgIndex(index);
-                carouselRef.current?.scrollTo({ left: index * carouselRef.current.offsetWidth, behavior: 'smooth' });
-              }}
-              className={`relative w-full aspect-square rounded-lg border-2 overflow-hidden transition-all ${activeImgIndex === index ? 'border-haitiBlue ring-2 ring-blue-100' : 'border-transparent hover:border-gray-200'}`}
-            >
-              <Image src={img.src} alt={`${cleanName} view ${index + 1}`} fill sizes="100px" className="object-cover" />
-            </button>
-          ))}
-        </div>
+        {images.length > 1 ? (
+          <div className="hidden lg:flex flex-col gap-3 lg:col-span-1 sticky top-[120px] self-start max-h-[calc(100vh-140px)] overflow-y-auto no-scrollbar pb-4">
+            {images.map((img, index) => (
+              <button 
+                key={index} 
+                onClick={() => {
+                  setActiveImgIndex(index);
+                  carouselRef.current?.scrollTo({ left: index * carouselRef.current.offsetWidth, behavior: 'smooth' });
+                }}
+                className={`relative w-full aspect-square rounded-lg border-2 overflow-hidden transition-all ${activeImgIndex === index ? 'border-haitiBlue ring-2 ring-blue-100' : 'border-transparent hover:border-gray-200'}`}
+              >
+                <Image src={img.src} alt={`${cleanName} view ${index + 1}`} fill sizes="100px" className="object-cover" />
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div className="hidden lg:block lg:col-span-1"></div> /* Spacer if no images */
+        )}
 
         {/* ========================================== */}
         {/* COL 2: HERO STAGE (STICKY, ~40%)           */}
@@ -245,7 +262,7 @@ export default function ProductInteractive({ product }) {
             ))}
           </div>
 
-          {/* Mobile Dots Pagination */}
+          {/* Mobile Dots Pagination (Hidden if 1 image) */}
           {images.length > 1 && (
             <div className="flex lg:hidden justify-center gap-2 mt-4">
               {images.map((_, index) => (
@@ -302,7 +319,7 @@ export default function ProductInteractive({ product }) {
             </div>
           )}
 
-          {/* Size Selector (No Size Guide) */}
+          {/* Size Selector */}
           {sizeOptions.length > 0 && (
             <div className="mb-6">
               <h3 className="text-sm font-extrabold text-ethoDark mb-3">
@@ -338,27 +355,62 @@ export default function ProductInteractive({ product }) {
             </div>
           </div>
 
-          {/* Description (Truncated on Mobile) */}
-          <div className="mt-8 pt-8 border-t border-gray-200 relative">
-            <h3 className="text-lg font-bold text-ethoDark mb-4">Product Details</h3>
+          <div className="mt-8">
             
-            {/* The Clamping Wrapper */}
-            <div className={`prose prose-sm text-gray-600 leading-relaxed relative ${descStep === 1 ? 'line-clamp-3 lg:line-clamp-none overflow-hidden' : descStep === 2 ? 'line-clamp-6 lg:line-clamp-none overflow-hidden' : ''}`}>
-               <div dangerouslySetInnerHTML={{ __html: product.description || "No description available." }}></div>
-               
-               {/* Fade-out Gradient (Mobile Only, Only when collapsed) */}
-               {descStep < 3 && (
-                 <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-ethoBg to-transparent lg:hidden pointer-events-none"></div>
-               )}
+            {/* MANAGER FIX: Extracted Size Table Accordion */}
+            {sizeTableHtml && (
+              <div className="border-t border-gray-200">
+                <button 
+                  onClick={() => setSizeTableOpen(!sizeTableOpen)} 
+                  className="w-full py-5 flex justify-between items-center text-left focus:outline-none group"
+                >
+                  <span className="text-lg font-extrabold text-ethoDark group-hover:text-haitiBlue transition-colors flex items-center gap-2">
+                    <svg className="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" /></svg>
+                    Size Guide
+                  </span>
+                  <svg className={`w-5 h-5 text-gray-500 transition-transform duration-300 ${sizeTableOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                </button>
+                <div className={`overflow-hidden transition-all duration-300 ease-in-out ${sizeTableOpen ? 'max-h-[1500px] opacity-100 pb-6' : 'max-h-0 opacity-0'}`}>
+                   {/* We wrap the table inside an overflow-x-auto container so it scrolls nicely on mobile instead of breaking the screen */}
+                   <div 
+                     className="prose prose-sm text-gray-600 max-w-none overflow-x-auto [&_table]:min-w-full [&_table]:border-collapse [&_th]:bg-gray-100 [&_th]:border [&_th]:border-gray-200 [&_th]:p-2 [&_td]:border [&_td]:border-gray-200 [&_td]:p-2"
+                     dangerouslySetInnerHTML={{ __html: sizeTableHtml }}
+                   ></div>
+                </div>
+              </div>
+            )}
+
+            {/* Main Product Description Accordion */}
+            <div className="border-t border-gray-200">
+              <button 
+                onClick={() => setAccordionOpen(!accordionOpen)} 
+                className="w-full py-5 flex justify-between items-center text-left focus:outline-none group"
+              >
+                <span className="text-lg font-extrabold text-ethoDark group-hover:text-haitiBlue transition-colors">Product Details</span>
+                <svg className={`w-5 h-5 text-gray-500 transition-transform duration-300 ${accordionOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+              </button>
+              
+              <div className={`overflow-hidden transition-all duration-300 ease-in-out ${accordionOpen ? 'max-h-[1000px] opacity-100 pb-6' : 'max-h-0 opacity-0'}`}>
+                 {/* The Clamping Wrapper */}
+                 <div className={`prose prose-sm text-gray-600 leading-relaxed relative max-w-none ${descStep === 1 ? 'line-clamp-3 lg:line-clamp-none overflow-hidden' : descStep === 2 ? 'line-clamp-6 lg:line-clamp-none overflow-hidden' : ''}`}>
+                    <div dangerouslySetInnerHTML={{ __html: mainDescriptionHtml }}></div>
+                    
+                    {/* Fade-out Gradient (Mobile Only) */}
+                    {descStep < 3 && (
+                      <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-ethoBg to-transparent lg:hidden pointer-events-none"></div>
+                    )}
+                 </div>
+                 
+                 {/* Show More/Less Button (Mobile Only) */}
+                 <button 
+                   onClick={handleDescToggle}
+                   className="mt-3 text-haitiBlue font-bold text-sm lg:hidden hover:underline"
+                 >
+                   {descStep === 1 ? "+ Show more" : descStep === 2 ? "+ Show more" : "- Show less"}
+                 </button>
+              </div>
             </div>
-            
-            {/* Show More/Less Button (Mobile Only) */}
-            <button 
-              onClick={handleDescToggle}
-              className="mt-3 text-haitiBlue font-bold text-sm lg:hidden hover:underline"
-            >
-              {descStep === 1 ? "+ Show more" : descStep === 2 ? "+ Show more" : "- Show less"}
-            </button>
+
           </div>
         </div>
 
@@ -401,8 +453,9 @@ export default function ProductInteractive({ product }) {
               <div className="animate-spin rounded-full h-6 w-6 border-2 border-white border-t-transparent"></div>
             ) : (
               <>
-                <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg>
-                Buy via WhatsApp
+                <svg className="w-6 h-6 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg>
+                {/* MANAGER FIX: Added whitespace-nowrap to prevent text from breaking into two lines */}
+                <span className="whitespace-nowrap">Buy via WhatsApp</span>
               </>
             )}
           </button>
