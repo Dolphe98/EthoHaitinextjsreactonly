@@ -167,6 +167,7 @@ export default function CheckoutPage() {
     if (details.status === "COMPLETED") {
       if (typeof window !== 'undefined' && window.goaffproTrackConversion) {
         window.goaffproTrackConversion({ id: data.orderID, total: total });
+        window.goaffproTrackConversion({ id: data.orderID, total: total, coupon_code: promoCode });
       }
       setPaymentSuccess(data.orderID);
       clearCart();
