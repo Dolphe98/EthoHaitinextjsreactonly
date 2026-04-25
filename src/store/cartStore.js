@@ -6,6 +6,22 @@ export const useCartStore = create(
     (set, get) => ({
       cart: [], // The array holding all added items
 
+      // ==========================================
+      // NEW: PROMO CODE STATE
+      // ==========================================
+      promoCode: null,
+      discountPercent: 0,
+
+      // Apply any typed code and give 10% off
+      applyPromoCode: (code) => {
+        set({ promoCode: code.toUpperCase(), discountPercent: 10 });
+      },
+
+      // Remove the code
+      removePromoCode: () => {
+        set({ promoCode: null, discountPercent: 0 });
+      },
+
       // Action: Add an item to the cart
       addToCart: (product) => {
         const cart = get().cart;
@@ -53,7 +69,7 @@ export const useCartStore = create(
       },
 
       // ==========================================
-      // NEW: DEFERRED CONFIGURATION ACTIONS
+      // DEFERRED CONFIGURATION ACTIONS
       // ==========================================
 
       // 1. Inline Variant Updater (For Cart Dropdowns)
@@ -152,7 +168,7 @@ export const useCartStore = create(
       },
 
       // Action: Clear the whole cart (used after successful checkout)
-      clearCart: () => set({ cart: [] }),
+      clearCart: () => set({ cart: [], promoCode: null, discountPercent: 0 }),
     }),
     {
       name: 'ethohaiti-cart', // The name of the saved data in the browser

@@ -19,6 +19,13 @@ async function generateAccessToken() {
 export async function POST(req) {
   try {
     const { total } = await req.json();
+
+    // MANAGER FIX: Security block to prevent zero, negative, or invalid totals
+    if (!total || isNaN(total) || total <= 0) {
+      console.error("Invalid total received:", total);
+      return NextResponse.json({ error: "Invalid cart total." }, { status: 400 });
+    }
+
     const accessToken = await generateAccessToken();
 
     const response = await fetch(`${base}/v2/checkout/orders`, {
@@ -33,6 +40,7 @@ export async function POST(req) {
           {
             amount: {
               currency_code: "USD",
+              // Formats the discounted total perfectly for PayPal (e.g., "45.00")
               value: parseFloat(total).toFixed(2),
             },
           },

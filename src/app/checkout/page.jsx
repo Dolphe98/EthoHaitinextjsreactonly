@@ -52,7 +52,8 @@ function CustomSelect({ options, value, onChange, placeholder, hasError }) {
 }
 
 export default function CheckoutPage() {
-  const { cart, clearCart, updateCartItemVariants } = useCartStore();
+  // MANAGER FIX: Brought in Promo states and actions from the store
+  const { cart, clearCart, updateCartItemVariants, promoCode, discountPercent, applyPromoCode, removePromoCode } = useCartStore();
   const { user } = useAuthStore();
   const router = useRouter();
   const supabase = createClient();
@@ -63,14 +64,17 @@ export default function CheckoutPage() {
   const [loadingAddress, setLoadingAddress] = useState(true);
   const [realShipping, setRealShipping] = useState(null);
   const [loadingShipping, setLoadingShipping] = useState(false);
+  const [promoInput, setPromoInput] = useState(""); // Local state for typing the code
 
   // SYNced with addresses/page.jsx structure
   const [guestForm, setGuestForm] = useState({
     id: '', fullName: '', email: '', phone: '', address_1: '', address_2: '', city: '', state: '', postcode: '', country: 'US', delivery_instructions: ''
   });
 
+  // MANAGER FIX: Discount Math Engine
   const subtotal = cart.reduce((total, item) => total + (Number(item.price || 0) * item.quantity), 0);
-  const total = subtotal;
+  const discountAmount = subtotal * (discountPercent / 100);
+  const total = subtotal - discountAmount;
 
   // Security check: Block PayPal if variants are missing
   const hasUnconfiguredItems = cart.some(item => {
@@ -140,7 +144,7 @@ export default function CheckoutPage() {
     const res = await fetch("/api/paypal/create-order", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ total }), 
+      body: JSON.stringify({ total }), // Passes the discounted total safely
     });
     const order = await res.json();
     return order.id;
@@ -155,7 +159,7 @@ export default function CheckoutPage() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ 
-        orderID: data.orderID, cart: cart, userId: authUser?.id || null, userEmail: finalEmail, shippingAddress: address 
+        orderID: data.orderID, cart: cart, userId: authUser?.id || null, userEmail: finalEmail, shippingAddress: address, promoCode: promoCode 
       }),
     });
 
@@ -177,14 +181,12 @@ export default function CheckoutPage() {
 
   const handleGuestSubmit = async (e) => { 
     e.preventDefault(); 
-    setAddress(guestForm); // Update local state so they can instantly proceed to payment
+    setAddress(guestForm); 
     
-    // If logged in, quietly save this new address to their profile in the background
     if (user?.id) {
       const addressToSave = { ...guestForm, id: Date.now().toString() };
       const defaultNameParts = addressToSave.fullName.trim().split(' ');
 
-      // Fetch existing address book to prepend the new one
       const { data } = await supabase.from('profiles').select('address_book').eq('id', user.id).single();
       const currentBook = data?.address_book || [];
       const newAddressBook = [addressToSave, ...currentBook];
@@ -211,7 +213,6 @@ export default function CheckoutPage() {
   
   const handleGuestChange = (e) => { setGuestForm({ ...guestForm, [e.target.name]: e.target.value }); };
 
-  // MANAGER FIX: Replaced "white screen of death" with a High-Fidelity 2-Column Skeleton Loader
   if (!mounted) {
     return (
       <main className="pt-32 pb-20 min-h-screen bg-ethoBg">
@@ -219,7 +220,6 @@ export default function CheckoutPage() {
           <div className="h-10 bg-gray-200 rounded w-64 mb-8 mx-auto lg:mx-0"></div>
           
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-            {/* Left Column Skeleton (Order Summary) */}
             <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100 h-fit">
               <div className="h-8 bg-gray-200 rounded w-48 mb-6"></div>
               <div className="space-y-4 mb-6">
@@ -241,7 +241,6 @@ export default function CheckoutPage() {
               </div>
             </div>
 
-            {/* Right Column Skeleton (Address/Payment) */}
             <div className="flex flex-col gap-6">
               <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100">
                 <div className="h-8 bg-gray-200 rounded w-48 mb-6"></div>
@@ -311,7 +310,6 @@ export default function CheckoutPage() {
                   return (
                     <div key={item.cartItemId} className={`flex items-start gap-4 p-3 rounded-lg transition-colors border ${needsAction ? 'border-red-300 bg-red-50/40' : 'border-transparent bg-gray-50'}`}>
                       
-                      {/* OPTIMIZED NEXT.JS THUMBNAIL */}
                       <div className="relative w-16 h-16 bg-white rounded flex-shrink-0 border border-gray-100 shadow-sm overflow-hidden">
                         <Image 
                           src={item.image || "https://placehold.co/150x150.png?text=No+Image"} 
@@ -377,12 +375,52 @@ export default function CheckoutPage() {
                   );
                 })}
               </div>
+
+              {/* MANAGER FIX: NEW PROMO CODE SECTION */}
+              <div className="mb-6 border-t border-gray-200 pt-6">
+                {promoCode ? (
+                  <div className="flex justify-between items-center bg-green-50 p-4 rounded border border-green-200 shadow-sm">
+                    <div className="flex items-center gap-3">
+                      <svg className="w-5 h-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                      <div>
+                        <p className="text-sm font-extrabold text-green-800">Code Applied: {promoCode}</p>
+                        <p className="text-xs font-bold text-green-600 mt-0.5">10% off your entire order!</p>
+                      </div>
+                    </div>
+                    <button onClick={removePromoCode} className="text-sm font-bold text-haitiRed hover:text-red-700 hover:underline">Remove</button>
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Ambassador / Promo Code"
+                      value={promoInput}
+                      onChange={(e) => setPromoInput(e.target.value)}
+                      className="flex-grow border border-gray-300 rounded px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-haitiBlue uppercase placeholder:normal-case font-bold text-ethoDark"
+                    />
+                    <button
+                      onClick={() => { if (promoInput.trim()) applyPromoCode(promoInput.trim()); }}
+                      className="bg-ethoDark hover:bg-black text-white font-extrabold py-3 px-6 rounded transition-colors text-sm shadow-sm"
+                    >
+                      Apply
+                    </button>
+                  </div>
+                )}
+              </div>
               
               <div className="border-t border-gray-200 pt-6 space-y-3">
                 <div className="flex justify-between text-gray-600">
                   <span>Subtotal</span>
                   <span className="font-bold text-ethoDark">{formatPrice(subtotal)}</span>
                 </div>
+
+                {/* SHOW THE SAVINGS IF A CODE IS ACTIVE */}
+                {discountPercent > 0 && (
+                  <div className="flex justify-between text-green-600 font-bold">
+                    <span>Discount ({discountPercent}%)</span>
+                    <span>-{formatPrice(discountAmount)}</span>
+                  </div>
+                )}
                 
                 <div className="flex justify-between items-center text-gray-600">
                   <span>Shipping</span>
@@ -400,7 +438,7 @@ export default function CheckoutPage() {
                   </div>
                 </div>
 
-                <div className="flex justify-between text-2xl font-black text-ethoDark pt-4 mt-2 border-t">
+                <div className="flex justify-between text-2xl font-black text-ethoDark pt-4 mt-2 border-t border-gray-200">
                   <span>Total</span>
                   <span>{formatPrice(total)}</span>
                 </div>
@@ -530,7 +568,6 @@ export default function CheckoutPage() {
                       <p className="text-sm text-gray-600">{address.address_1}</p>
                       <p className="text-sm text-gray-600">{address.city}, {address.state} {address.postcode}</p>
                     </div>
-                    {/* Even logged in users should be able to edit this order's address temporarily if they want */}
                     <button onClick={() => setAddress(null)} className="text-xs font-bold text-haitiBlue hover:underline bg-white px-3 py-1 rounded shadow-sm border border-gray-200">Edit</button>
                   </div>
 
