@@ -427,7 +427,39 @@ export default function AffiliatesPage() {
               partners@ethohaiti.com
             </a>
           </div>
+{/* 6. SUPPORT & HELP FOOTER */}
+          <div className="bg-white border border-gray-200 p-8 rounded-2xl text-center shadow-sm max-w-2xl mx-auto">
+            <h3 className="text-xl font-bold text-ethoDark mb-2">Have questions before joining?</h3>
+            <p className="text-gray-500 mb-6 font-medium">
+              Our partner support team is here for you.
+            </p>
+            <a 
+              href="mailto:partners@ethohaiti.com" 
+              className="inline-flex items-center justify-center gap-2 text-haitiBlue hover:text-blue-800 font-extrabold text-lg transition-colors bg-blue-50 px-6 py-3 rounded-full hover:bg-blue-100"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" /></svg>
+              partners@ethohaiti.com
+            </a>
+          </div>
 
+          {/* ========================================= */}
+          {/* PASTE THIS NEW LEGAL LINK RIGHT HERE:     */}
+          {/* ========================================= */}
+          <div className="mt-12 text-center">
+            <Link 
+              href="/affiliates/terms" 
+              className="text-sm text-gray-400 hover:text-haitiBlue transition-colors font-medium underline underline-offset-4"
+            >
+              View Official Partner Terms & Conditions
+            </Link>
+          </div>
+          {/* ========================================= */}
+
+        </div>
+      </main>
+    </>
+  );
+}
         </div>
       </main>
     </>
