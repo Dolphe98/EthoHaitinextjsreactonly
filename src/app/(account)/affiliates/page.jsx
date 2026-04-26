@@ -239,7 +239,7 @@ export default function AffiliatesPage() {
           {/* 2. THE CULTURAL HOOK */}
           <div className="max-w-3xl mx-auto text-center mb-12">
             <p className="text-lg text-gray-700 leading-relaxed font-medium">
-              We are building an exclusive syndicate of creators and cultural partners. By joining the EthoHaiti family, you aren't just selling premium streetwear—you are spreading our proverbs, our history, and our pride. We give you the tools, the exclusive drops, and top-tier commissions. Watch the video, read the terms, and let’s build together.
+              We are building more than just a brand—we are building a community of creators and cultural partners. By joining the EthoHaiti family, you are spreading our proverbs, our history, and our pride with the world. We give you the tools, the exclusive drops, and top-tier commissions. Watch the video, read the terms, and let’s build together.
             </p>
           </div>
 
@@ -376,7 +376,7 @@ export default function AffiliatesPage() {
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={3.5} stroke="currentColor" className="w-10 h-10"><path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" /></svg>
                 </div>
                 <h2 className="text-3xl font-black text-green-800 mb-2">Agreement Accepted!</h2>
-                <p className="text-green-700 font-medium mb-8 text-lg">Welcome to the syndicate. Access your tools below.</p>
+                <p className="text-green-700 font-medium mb-8 text-lg">Welcome on board. Access your tools below.</p>
 
                 <div className="flex flex-col gap-4 max-w-sm mx-auto">
                   <a 
