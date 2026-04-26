@@ -12,6 +12,7 @@ export default function AffiliatesPage() {
   const supabase = createClient();
   
   const [mounted, setMounted] = useState(false);
+  const [isChecking, setIsChecking] = useState(true); // NEW: Loading state for checking DB
 
   // Application Form States
   const [form, setForm] = useState({ fullName: '', email: '', phone: '', agreed: false });
@@ -29,6 +30,34 @@ export default function AffiliatesPage() {
     }
   }, [token, router]);
 
+  // NEW: Check if they already applied in the past
+  useEffect(() => {
+    async function checkExistingApplication() {
+      if (user?.id) {
+        try {
+          const { data } = await supabase
+            .from('affiliate_applications')
+            .select('id')
+            .eq('user_id', user.id)
+            .maybeSingle(); // Gets one record or null without throwing an error
+
+          if (data) {
+            setSubmitSuccess(true); // They already applied! Skip the form.
+          }
+        } catch (error) {
+          console.error("Error checking application status:", error);
+        }
+      }
+      setIsChecking(false); // Stop loading regardless of outcome
+    }
+
+    if (mounted && token && user?.id) {
+      checkExistingApplication();
+    } else if (mounted && !token) {
+      setIsChecking(false);
+    }
+  }, [mounted, token, user, supabase]);
+
   // Pre-fill email if they are logged in
   useEffect(() => {
     if (user?.email && !form.email) {
@@ -39,7 +68,7 @@ export default function AffiliatesPage() {
   const handleApplicationSubmit = async (e) => {
     e.preventDefault();
     if (!form.agreed) {
-      return; // The button is disabled anyway, but keeping this as a fallback
+      return; 
     }
 
     setIsSubmitting(true);
@@ -62,14 +91,13 @@ export default function AffiliatesPage() {
     }
   };
 
-  // Video URLs (Replace these with your actual YouTube Embed URLs)
   const videoUrls = {
     kreyol: "https://www.youtube.com/embed/YOUR_KREYOL_VIDEO_ID",
     english: "https://www.youtube.com/embed/YOUR_ENGLISH_VIDEO_ID"
   };
 
-  // High-Fidelity Skeleton Loader
-  if (!mounted || !token) {
+  // High-Fidelity Skeleton Loader (Now waits for the DB check to finish too!)
+  if (!mounted || !token || isChecking) {
     return (
       <main className="pt-32 pb-20 min-h-screen bg-ethoBg">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 animate-pulse">
@@ -86,7 +114,7 @@ export default function AffiliatesPage() {
 
   return (
     <>
-      {/* TERMS AND CONDITIONS MODAL (Unchanged) */}
+      {/* TERMS AND CONDITIONS MODAL */}
       {showTerms && (
         <div className="fixed inset-0 bg-black/80 z-[100] flex justify-center items-center p-4 sm:p-6 backdrop-blur-sm" onClick={() => setShowTerms(false)}>
           <div className="bg-white rounded-xl max-w-3xl w-full max-h-[85vh] flex flex-col shadow-2xl animate-in fade-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
@@ -150,7 +178,7 @@ export default function AffiliatesPage() {
           {/* 2. THE CULTURAL HOOK */}
           <div className="max-w-3xl mx-auto text-center mb-12">
             <p className="text-lg text-gray-700 leading-relaxed font-medium">
-              We are building an exclusive syndicate of creators, tastemakers, and cultural ambassadors. By joining the EthoHaiti family, you aren't just selling premium streetwear—you are spreading our proverbs, our history, and our pride. We give you the tools, the exclusive drops, and top-tier commissions. Watch the video, read the terms, and let’s build together.
+              We are building an exclusive syndicate of creators and cultural partners. By joining the EthoHaiti family, you aren't just selling premium streetwear—you are spreading our proverbs, our history, and our pride. We give you the tools, the exclusive drops, and top-tier commissions. Watch the video, read the terms, and let’s build together.
             </p>
           </div>
 
@@ -176,7 +204,6 @@ export default function AffiliatesPage() {
 
             {/* Cinematic Video Player */}
             <div className="w-full aspect-video bg-black rounded-xl mb-12 shadow-lg border border-gray-200 overflow-hidden relative">
-              {/* Replace with actual iframe when ready */}
               <div className="absolute inset-0 flex items-center justify-center">
                 <span className="text-white/50 font-bold tracking-widest uppercase">Video Player ({activeLanguage})</span>
               </div>
@@ -213,7 +240,7 @@ export default function AffiliatesPage() {
               <div className="bg-gray-50 border border-gray-200 p-8 rounded-xl">
                 <div className="flex items-center gap-3 mb-6 border-b border-gray-200 pb-4">
                   <svg className="w-8 h-8 text-haitiRed" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m3.75 9v6m3-3H9m1.5-12H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" /></svg>
-                  <h2 className="text-2xl font-black text-ethoDark m-0">Step 2: Ambassador Agreement</h2>
+                  <h2 className="text-2xl font-black text-ethoDark m-0">Step 2: Partner Agreement</h2>
                 </div>
                 
                 <form onSubmit={handleApplicationSubmit} className="space-y-5">
@@ -282,7 +309,7 @@ export default function AffiliatesPage() {
                 </form>
               </div>
             ) : (
-              // THE FUNNEL LOCK: Only shows after successful form submission
+              // THE FUNNEL LOCK: Only shows after successful form submission or if already applied in DB
               <div className="bg-green-50 border border-green-200 p-8 rounded-xl text-center shadow-inner animate-in fade-in zoom-in-95 duration-500">
                 <div className="w-20 h-20 bg-green-500 text-white rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg border-4 border-green-200">
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={3.5} stroke="currentColor" className="w-10 h-10"><path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" /></svg>
@@ -329,7 +356,7 @@ export default function AffiliatesPage() {
           <div className="bg-white border border-gray-200 p-8 rounded-2xl text-center shadow-sm max-w-2xl mx-auto">
             <h3 className="text-xl font-bold text-ethoDark mb-2">Have questions before joining?</h3>
             <p className="text-gray-500 mb-6 font-medium">
-              Our ambassador support team is here for you.
+              Our partner support team is here for you.
             </p>
             <a 
               href="mailto:partners@ethohaiti.com" 
