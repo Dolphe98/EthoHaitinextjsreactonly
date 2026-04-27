@@ -24,6 +24,10 @@ export default function OrderDetailsPage() {
   const [error, setError] = useState('');
   const [isGuest, setIsGuest] = useState(false);
 
+  // Receipt States
+  const [isSendingReceipt, setIsSendingReceipt] = useState(false);
+  const [receiptSent, setReceiptSent] = useState(false);
+
   // Line-Item Cancellation States
   const [itemToCancel, setItemToCancel] = useState(null);
   const [cancelPhone, setCancelPhone] = useState('');
@@ -141,6 +145,26 @@ export default function OrderDetailsPage() {
     
     setToastMessage("Item added to cart!");
     setTimeout(() => setToastMessage(''), 3000);
+  };
+
+  const handleSendReceipt = async () => {
+    setIsSendingReceipt(true);
+    try {
+      const res = await fetch('/api/orders/receipt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId: order.id })
+      });
+      if (!res.ok) throw new Error('Failed to send');
+      setReceiptSent(true);
+      setToastMessage("Receipt sent to your email!");
+      setTimeout(() => { setToastMessage(''); setReceiptSent(false); }, 4000);
+    } catch (err) {
+      setToastMessage("Failed to send receipt. Try again later.");
+      setTimeout(() => setToastMessage(''), 4000);
+    } finally {
+      setIsSendingReceipt(false);
+    }
   };
 
   // MANAGER FIX: Enhanced the loading state into a high-fidelity Skeleton UI
@@ -302,7 +326,37 @@ export default function OrderDetailsPage() {
             )}
             <p className="text-gray-500 mt-2">Placed on {new Date(order.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
           </div>
-          {isGuest && <span className="bg-yellow-100 text-yellow-800 text-xs font-bold px-3 py-1 rounded-full w-max">Guest View</span>}
+          
+          <div className="flex flex-col items-end gap-3">
+            {isGuest && <span className="bg-yellow-100 text-yellow-800 text-xs font-bold px-3 py-1 rounded-full w-max">Guest View</span>}
+            
+            {/* ACTION BUTTONS: Print & Email Receipt */}
+            <div className="flex items-center gap-3">
+              <button 
+                onClick={() => window.print()} 
+                className="text-sm font-bold text-gray-600 bg-white border border-gray-300 hover:bg-gray-50 px-4 py-2 rounded-lg flex items-center gap-2 transition-colors shadow-sm"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M6.728 6.75h10.544M6.728 9.75h10.544M3 15h18M5.25 15V4.5a.75.75 0 0 1 .75-.75h12a.75.75 0 0 1 .75.75V15m-13.5 0v3.75a.75.75 0 0 0 .75.75h12a.75.75 0 0 0 .75-.75V15" /></svg>
+                Print
+              </button>
+              <button 
+                onClick={handleSendReceipt}
+                disabled={isSendingReceipt || receiptSent}
+                className="text-sm font-bold text-white bg-ethoDark hover:bg-black px-4 py-2 rounded-lg flex items-center gap-2 transition-colors shadow-sm disabled:bg-gray-400"
+              >
+                {isSendingReceipt ? (
+                  <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+                ) : receiptSent ? (
+                  "Sent!"
+                ) : (
+                  <>
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" /></svg>
+                    Email Receipt
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* Global Timeline */}
