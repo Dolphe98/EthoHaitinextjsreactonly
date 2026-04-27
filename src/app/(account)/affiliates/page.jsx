@@ -30,10 +30,9 @@ export default function AffiliatesPage() {
     }
   }, [token, router]);
 
-  // NEW BULLETPROOF CHECK: Database + Local Storage
+  // Check if they already applied in the past
   useEffect(() => {
     async function checkExistingApplication() {
-      // 1. Check local storage first (Lightning fast)
       const localCheck = localStorage.getItem('etho_partner_applied');
       if (localCheck === 'true') {
         setSubmitSuccess(true);
@@ -41,7 +40,6 @@ export default function AffiliatesPage() {
         return;
       }
 
-      // 2. If not in local storage, check the database securely
       if (user?.id) {
         try {
           const { data } = await supabase
@@ -51,7 +49,6 @@ export default function AffiliatesPage() {
             .maybeSingle(); 
 
           if (data) {
-            // Remember it in the browser for next time
             localStorage.setItem('etho_partner_applied', 'true');
             setSubmitSuccess(true); 
           }
@@ -98,7 +95,6 @@ export default function AffiliatesPage() {
       console.error("Application Error:", error);
       alert("There was an issue submitting your application. Please try again.");
     } else {
-      // 3. Save memory instantly on successful submit
       localStorage.setItem('etho_partner_applied', 'true');
       setSubmitSuccess(true);
     }
@@ -109,6 +105,7 @@ export default function AffiliatesPage() {
     english: "https://www.youtube.com/embed/YOUR_ENGLISH_VIDEO_ID"
   };
 
+  // High-Fidelity Skeleton Loader
   if (!mounted || !token || isChecking) {
     return (
       <main className="pt-32 pb-20 min-h-screen bg-ethoBg">
@@ -141,21 +138,21 @@ export default function AffiliatesPage() {
               <p className="font-bold text-ethoDark">Company: EthoHaiti | Effective Date: 4/26/2026 | Governing Law: Dominican Republic</p>
               
               <h3 className="font-bold text-lg text-ethoDark mt-6">1. ACCEPTANCE OF TERMS AND DEFINITIONS</h3>
-              <p>By applying to and participating in the EthoHaiti affiliate program, you ("Partner") agree to be bound by these Terms and Conditions ("Agreement"). This Agreement constitutes a legally binding contract between you and EthoHaiti ("Company", "we", "us", or "our").</p>
+              <p>By applying to and participating in the EthoHaiti affiliate program, you (&quot;Partner&quot;) agree to be bound by these Terms and Conditions (&quot;Agreement&quot;). This Agreement constitutes a legally binding contract between you and EthoHaiti (&quot;Company&quot;, &quot;we&quot;, &quot;us&quot;, or &quot;our&quot;).</p>
               <p className="font-bold">Definitions:</p>
               <ul className="list-disc pl-5">
-                <li><strong>"Company"</strong> refers to EthoHaiti, the operator and owner of this affiliate program.</li>
-                <li><strong>"Partner"</strong> refers to any individual or business entity that has been accepted into and participates in the Company's affiliate marketing program.</li>
-                <li><strong>"Program"</strong> refers to the EthoHaiti affiliate marketing program described in this Agreement.</li>
-                <li><strong>"Products/Services"</strong> refers to the physical products offered and sold by the Company.</li>
-                <li><strong>"Affiliate Link"</strong> refers to the unique tracking link provided to the Affiliate for promoting the Company's products or services.</li>
-                <li><strong>"Commission"</strong> refers to the compensation paid to Affiliate for qualified referrals as defined herein.</li>
+                <li><strong>&quot;Company&quot;</strong> refers to EthoHaiti, the operator and owner of this affiliate program.</li>
+                <li><strong>&quot;Partner&quot;</strong> refers to any individual or business entity that has been accepted into and participates in the Company&apos;s affiliate marketing program.</li>
+                <li><strong>&quot;Program&quot;</strong> refers to the EthoHaiti affiliate marketing program described in this Agreement.</li>
+                <li><strong>&quot;Products/Services&quot;</strong> refers to the physical products offered and sold by the Company.</li>
+                <li><strong>&quot;Affiliate Link&quot;</strong> refers to the unique tracking link provided to the Affiliate for promoting the Company&apos;s products or services.</li>
+                <li><strong>&quot;Commission&quot;</strong> refers to the compensation paid to Affiliate for qualified referrals as defined herein.</li>
               </ul>
 
               <h3 className="font-bold text-lg text-ethoDark mt-6">2. AFFILIATE PROGRAM PARTICIPATION</h3>
               <p className="font-bold">2.1 Eligibility Requirements</p>
               <p>To participate in our affiliate program, you must be at least 18 years of age, have an active social media presence or website, and have the legal capacity to enter into this Agreement.</p>
-              <p>The Company reserves the right, in its sole discretion, to accept or reject any affiliate application. We may terminate or suspend any affiliate's participation at any time for any reason, including but not limited to violations of this Agreement or conduct that we deem harmful to our business or reputation.</p>
+              <p>The Company reserves the right, in its sole discretion, to accept or reject any affiliate application. We may terminate or suspend any affiliate&apos;s participation at any time for any reason, including but not limited to violations of this Agreement or conduct that we deem harmful to our business or reputation.</p>
               <p className="font-bold mt-4">2.2 Application and Approval Process</p>
               <p>All prospective affiliates must complete an application process and receive formal approval before beginning promotional activities. Upon approval, you will receive access to your affiliate dashboard, promotional materials, and your unique affiliate tracking links. You may not begin promoting our products or services until you have received formal approval.</p>
 
@@ -173,14 +170,14 @@ export default function AffiliatesPage() {
               <p>Commission payments are processed on a monthly basis. Payments will be made approximately 30 days after the end of each payment period.</p>
               <p><strong>Minimum Payout Threshold:</strong> You must accumulate at least USD 20 in eligible commissions before a payment will be issued. If your balance is below this threshold, your earnings will roll over to the next period. Available Payment Methods: Payments are issued via PayPal in USD and other.</p>
               <p className="font-bold mt-4">4.3 Commission Validation and Holding Period</p>
-              <p>All sales are subject to a 30-day validation period to allow for potential returns or chargebacks. During this period, commissions will be held in a "pending" status. In the event of a chargeback, refund, or return on a print-on-demand order, any commissions credited to the affiliate for that specific sale will be voided and deducted from their pending balance.</p>
+              <p>All sales are subject to a 30-day validation period to allow for potential returns or chargebacks. During this period, commissions will be held in a &quot;pending&quot; status. In the event of a chargeback, refund, or return on a print-on-demand order, any commissions credited to the affiliate for that specific sale will be voided and deducted from their pending balance.</p>
 
               <h3 className="font-bold text-lg text-ethoDark mt-6">5. PROHIBITED PRACTICES AND COMPLIANCE</h3>
               <p className="font-bold">5.1 Prohibited Marketing Practices</p>
               <p>To maintain the integrity of our brand, the following practices are strictly prohibited:</p>
               <ul className="list-disc pl-5">
-                <li><strong>Brand Bidding:</strong> Affiliates are prohibited from running Pay-Per-Click (PPC) campaigns (such as Google Ads or Bing Ads) bidding on the Company name "EthoHaiti", trademarked terms, brand names, or any variations thereof.</li>
-                <li><strong>Impersonation:</strong> Affiliates may not represent themselves as the official EthoHaiti store. Affiliates are prohibited from creating social media accounts, domains, or pages that include "EthoHaiti" in the handle or URL in a way that implies they are the official brand.</li>
+                <li><strong>Brand Bidding:</strong> Affiliates are prohibited from running Pay-Per-Click (PPC) campaigns (such as Google Ads or Bing Ads) bidding on the Company name &quot;EthoHaiti&quot;, trademarked terms, brand names, or any variations thereof.</li>
+                <li><strong>Impersonation:</strong> Affiliates may not represent themselves as the official EthoHaiti store. Affiliates are prohibited from creating social media accounts, domains, or pages that include &quot;EthoHaiti&quot; in the handle or URL in a way that implies they are the official brand.</li>
                 <li><strong>Spam and Fraud:</strong> The use of bots, click farms, automated traffic generation, incentivized clicks, or unsolicited spam emails is strictly prohibited.</li>
               </ul>
               <p className="font-bold mt-4">5.2 Legal Compliance and Disclosure Requirements</p>
@@ -211,7 +208,7 @@ export default function AffiliatesPage() {
             
             <div className="p-6 border-t border-gray-100 bg-gray-50 rounded-b-xl text-right">
               <button onClick={() => setShowTerms(false)} className="bg-ethoDark hover:bg-black text-white font-bold py-3 px-8 rounded shadow-md transition-colors">
-                Close & Return to Application
+                Close &amp; Return to Application
               </button>
             </div>
           </div>
@@ -239,7 +236,7 @@ export default function AffiliatesPage() {
           {/* 2. THE CULTURAL HOOK */}
           <div className="max-w-3xl mx-auto text-center mb-12">
             <p className="text-lg text-gray-700 leading-relaxed font-medium">
-              We are building more than just a brand—we are building a community of creators and cultural partners. By joining the EthoHaiti family, you are spreading our proverbs, our history, and our pride with the world. We give you the tools, the exclusive drops, and top-tier commissions. Watch the video, read the terms, and let’s build together.
+              We are building an exclusive syndicate of creators and cultural partners. By joining the EthoHaiti family, you aren&apos;t just selling premium streetwear—you are spreading our proverbs, our history, and our pride. We give you the tools, the exclusive drops, and top-tier commissions. Watch the video, read the terms, and let&apos;s build together.
             </p>
           </div>
 
@@ -277,7 +274,7 @@ export default function AffiliatesPage() {
               <div className="flex flex-col md:flex-row gap-6 md:gap-4 relative">
                 {/* Steps */}
                 {[
-                  { title: "Watch & Learn", desc: "Watch the explainer video above. It’s mandatory for all new partners." },
+                  { title: "Watch & Learn", desc: "Watch the explainer video above. It's mandatory for all new partners." },
                   { title: "Agree & Apply", desc: "Accept the Terms & Conditions below by entering your details." },
                   { title: "Access the Portal", desc: "Create your official account on our GoAffPro platform to get your tracking links." },
                   { title: "Rep & Promote", desc: "Share your links and promo codes with your audience." },
@@ -352,7 +349,7 @@ export default function AffiliatesPage() {
                     <label htmlFor="termsAgreed" className="text-sm text-gray-700 cursor-pointer select-none leading-relaxed flex-1">
                       I have read and agree to the EthoHaiti{' '}
                       <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowTerms(true); }} className="text-haitiBlue font-bold hover:underline">
-                        Partner Terms & Conditions
+                        Partner Terms &amp; Conditions
                       </button>.
                     </label>
                   </div>
@@ -370,13 +367,12 @@ export default function AffiliatesPage() {
                 </form>
               </div>
             ) : (
-              // THE FUNNEL LOCK: Only shows after successful form submission or if already applied in DB
               <div className="bg-green-50 border border-green-200 p-8 rounded-xl text-center shadow-inner animate-in fade-in zoom-in-95 duration-500">
                 <div className="w-20 h-20 bg-green-500 text-white rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg border-4 border-green-200">
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={3.5} stroke="currentColor" className="w-10 h-10"><path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" /></svg>
                 </div>
                 <h2 className="text-3xl font-black text-green-800 mb-2">Agreement Accepted!</h2>
-                <p className="text-green-700 font-medium mb-8 text-lg">Welcome on board. Access your tools below.</p>
+                <p className="text-green-700 font-medium mb-8 text-lg">Welcome to the syndicate. Access your tools below.</p>
 
                 <div className="flex flex-col gap-4 max-w-sm mx-auto">
                   <a 
@@ -427,39 +423,17 @@ export default function AffiliatesPage() {
               partners@ethohaiti.com
             </a>
           </div>
-{/* 6. SUPPORT & HELP FOOTER */}
-          <div className="bg-white border border-gray-200 p-8 rounded-2xl text-center shadow-sm max-w-2xl mx-auto">
-            <h3 className="text-xl font-bold text-ethoDark mb-2">Have questions before joining?</h3>
-            <p className="text-gray-500 mb-6 font-medium">
-              Our partner support team is here for you.
-            </p>
-            <a 
-              href="mailto:partners@ethohaiti.com" 
-              className="inline-flex items-center justify-center gap-2 text-haitiBlue hover:text-blue-800 font-extrabold text-lg transition-colors bg-blue-50 px-6 py-3 rounded-full hover:bg-blue-100"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" /></svg>
-              partners@ethohaiti.com
-            </a>
-          </div>
 
-          {/* ========================================= */}
-          {/* PASTE THIS NEW LEGAL LINK RIGHT HERE:     */}
-          {/* ========================================= */}
+          {/* LEGAL LINK */}
           <div className="mt-12 text-center">
             <Link 
               href="/affiliates/terms" 
               className="text-sm text-gray-400 hover:text-haitiBlue transition-colors font-medium underline underline-offset-4"
             >
-              View Official Partner Terms & Conditions
+              View Official Partner Terms &amp; Conditions
             </Link>
           </div>
-          {/* ========================================= */}
 
-        </div>
-      </main>
-    </>
-  );
-}
         </div>
       </main>
     </>
