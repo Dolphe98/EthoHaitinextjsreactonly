@@ -1,27 +1,23 @@
 "use client";
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
 
 export default function ResetPasswordPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const emailParam = searchParams.get('email') || '';
+
+  const [email, setEmail] = useState(emailParam);
+  const [code, setCode] = useState('');
   const [passwords, setPasswords] = useState({ new: '', confirm: '' });
+  
   const [status, setStatus] = useState('idle'); 
   const [errorMessage, setErrorMessage] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [isSessionReady, setIsSessionReady] = useState(false); // MANAGER FIX: Session Lock
   
-  const router = useRouter();
   const supabase = createClient();
-
-  // MANAGER FIX: Wait for Supabase to grab the secure token from the URL
-  useEffect(() => {
-    supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'PASSWORD_RECOVERY' || session) {
-        setIsSessionReady(true);
-      }
-    });
-  }, [supabase.auth]);
 
   // Password Strength Logic
   const getPasswordStrength = (pw) => {
@@ -36,28 +32,37 @@ export default function ResetPasswordPage() {
   const pwStrength = getPasswordStrength(passwords.new);
   const passwordsMatch = passwords.new === passwords.confirm && passwords.new.length > 0;
 
-  const handleUpdatePassword = async (e) => {
+  const handleVerifyAndUpdate = async (e) => {
     e.preventDefault();
-    if (!passwordsMatch || pwStrength < 3) return;
-
-    if (!isSessionReady) {
-      setErrorMessage("Secure session not found. Please click the link in your email again.");
-      return;
-    }
+    if (!passwordsMatch || pwStrength < 3 || code.length !== 6 || !email) return;
 
     setStatus('loading');
     setErrorMessage('');
 
     try {
-      const { error } = await supabase.auth.updateUser({ password: passwords.new });
-      if (error) throw error;
+      // Step 1: Verify the 6-digit code
+      const { error: verifyError } = await supabase.auth.verifyOtp({
+        email,
+        token: code,
+        type: 'recovery'
+      });
+
+      if (verifyError) throw verifyError;
+
+      // Step 2: If the code is correct, instantly update the password
+      const { error: updateError } = await supabase.auth.updateUser({ 
+        password: passwords.new 
+      });
+
+      if (updateError) throw updateError;
       
       setStatus('success');
       setTimeout(() => {
         router.push('/account'); 
       }, 3000);
+
     } catch (error) {
-      setErrorMessage(error.message || "Failed to reset password. The link may have expired.");
+      setErrorMessage(error.message || "Invalid code or expired request.");
       setStatus('error');
     }
   };
@@ -84,15 +89,41 @@ export default function ResetPasswordPage() {
         
         <div className="text-center mb-8">
           <h1 className="text-2xl font-black text-ethoDark">Create New Password</h1>
-          <p className="text-sm text-gray-500 mt-2">Enter your new secure password below.</p>
+          <p className="text-sm text-gray-500 mt-2">Enter the 6-digit code from your email and your new password below.</p>
         </div>
 
-        <form onSubmit={handleUpdatePassword} className="space-y-6">
+        <form onSubmit={handleVerifyAndUpdate} className="space-y-6">
           {status === 'error' && (
             <div className="bg-red-50 text-haitiRed text-sm font-bold p-3 rounded">{errorMessage}</div>
           )}
 
+          {!emailParam && (
+            <div>
+              <label className="block text-sm font-bold text-ethoDark mb-2">Email Address</label>
+              <input 
+                type="email" 
+                required 
+                value={email} 
+                onChange={(e) => setEmail(e.target.value)} 
+                className="w-full px-4 py-3 border border-gray-300 rounded focus:ring-2 focus:ring-haitiBlue focus:outline-none text-black" 
+              />
+            </div>
+          )}
+
           <div>
+            <label className="block text-sm font-bold text-ethoDark mb-2">6-Digit Secure Code</label>
+            <input 
+              type="text" 
+              maxLength={6}
+              required 
+              value={code} 
+              onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))} // Forces numbers only
+              className="w-full px-4 py-3 border border-gray-300 rounded focus:ring-2 focus:ring-haitiBlue focus:outline-none text-black tracking-[0.5em] font-black text-center text-xl" 
+              placeholder="000000"
+            />
+          </div>
+
+          <div className="border-t border-gray-100 pt-6">
             <label className="block text-sm font-bold text-ethoDark mb-2">New Password</label>
             <div className="relative mb-2">
               <input 
@@ -102,7 +133,7 @@ export default function ResetPasswordPage() {
                 onChange={(e) => setPasswords({...passwords, new: e.target.value})} 
                 className="w-full px-4 py-3 border border-gray-300 rounded focus:ring-2 focus:ring-haitiBlue focus:outline-none text-black" 
               />
-              <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-3 text-gray-400 hover:text-gray-600">
+              <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-3 text-gray-400 hover:text-gray-600 font-bold text-sm">
                 {showPassword ? "Hide" : "Show"}
               </button>
             </div>
@@ -131,7 +162,7 @@ export default function ResetPasswordPage() {
 
           <button 
             type="submit" 
-            disabled={status === 'loading' || !passwordsMatch || pwStrength < 3}
+            disabled={status === 'loading' || !passwordsMatch || pwStrength < 3 || code.length !== 6 || !email}
             className="w-full bg-haitiRed hover:bg-red-700 text-white font-extrabold py-3 px-4 rounded shadow-md transition-colors flex justify-center items-center h-12 disabled:bg-gray-300 disabled:cursor-not-allowed"
           >
             {status === 'loading' ? <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div> : "Reset Password"}
