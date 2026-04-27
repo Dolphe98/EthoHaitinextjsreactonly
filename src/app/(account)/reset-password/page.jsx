@@ -9,9 +9,19 @@ export default function ResetPasswordPage() {
   const [status, setStatus] = useState('idle'); 
   const [errorMessage, setErrorMessage] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [isSessionReady, setIsSessionReady] = useState(false); // MANAGER FIX: Session Lock
   
   const router = useRouter();
   const supabase = createClient();
+
+  // MANAGER FIX: Wait for Supabase to grab the secure token from the URL
+  useEffect(() => {
+    supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY' || session) {
+        setIsSessionReady(true);
+      }
+    });
+  }, [supabase.auth]);
 
   // Password Strength Logic
   const getPasswordStrength = (pw) => {
@@ -30,6 +40,11 @@ export default function ResetPasswordPage() {
     e.preventDefault();
     if (!passwordsMatch || pwStrength < 3) return;
 
+    if (!isSessionReady) {
+      setErrorMessage("Secure session not found. Please click the link in your email again.");
+      return;
+    }
+
     setStatus('loading');
     setErrorMessage('');
 
@@ -39,7 +54,7 @@ export default function ResetPasswordPage() {
       
       setStatus('success');
       setTimeout(() => {
-        router.push('/account'); // Send them back to dashboard
+        router.push('/account'); 
       }, 3000);
     } catch (error) {
       setErrorMessage(error.message || "Failed to reset password. The link may have expired.");
