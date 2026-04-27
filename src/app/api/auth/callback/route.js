@@ -5,8 +5,8 @@ import { cookies } from 'next/headers';
 export async function GET(request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get('code');
-  // If a "next" parameter is provided, use it. Otherwise default to account.
-  const next = searchParams.get('next') ?? '/account';
+  // Change the default fallback to /reset-password
+  const next = searchParams.get('next') ?? '/reset-password';
 
   if (code) {
     const cookieStore = cookies();
