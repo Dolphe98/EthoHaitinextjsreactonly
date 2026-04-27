@@ -6,37 +6,25 @@ export async function GET() {
   // Your live webhook receiver URL
   const webhookUrl = "https://ethohaiti.com/api/webhooks/printify";
 
-  // The exact events Printify needs to tell us about
-  const topics = [
-    "order:sent-to-production",
-    "order:canceled",
-    "order:shipment:created",
-    "order:shipment:delivered"
-  ];
-
-  const results = [];
-
   try {
-    for (const topic of topics) {
-      const res = await fetch(`https://api.printify.com/v1/shops/${PRINTIFY_SHOP_ID}/webhooks.json`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${PRINTIFY_API_TOKEN}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          topic: topic,
-          url: webhookUrl
-        })
-      });
-      
-      const data = await res.json();
-      results.push({ topic, status: res.status, response: data });
-    }
+    // Tell Printify to send us the master "Update" signal (which includes cancellations)
+    const res = await fetch(`https://api.printify.com/v1/shops/${PRINTIFY_SHOP_ID}/webhooks.json`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${PRINTIFY_API_TOKEN}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        topic: "order:updated",
+        url: webhookUrl
+      })
+    });
+    
+    const data = await res.json();
 
     return NextResponse.json({ 
-      message: "Webhook bridge built successfully!", 
-      details: results 
+      message: "Order Update & Cancellation bridge built successfully!", 
+      details: data 
     });
 
   } catch (error) {
