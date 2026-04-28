@@ -32,7 +32,7 @@ async function generateAccessToken() {
 
 export async function POST(req) {
   try {
-    // MANAGER FIX: Grab the promoCode and shippingAddress sent from our updated checkout page
+    // MANAGER FIX: Grab the custom shippingAddress sent from our frontend checkout page
     const { orderID, cart, userId, userEmail, promoCode, shippingAddress } = await req.json();
     const accessToken = await generateAccessToken();
 
@@ -50,15 +50,26 @@ export async function POST(req) {
     // 2. IF PAYMENT SUCCESSFUL -> TRIGGER THE AUTOMATION PIPELINE
     if (data.status === "COMPLETED") {
       
-      // A. Extract the details
-      const shipping = data.purchase_units[0].shipping;
-      const payer = data.payer;
+      // ==========================================
+      // A. EXTRACT DETAILS (FORCING CUSTOM ADDRESS)
+      // ==========================================
+      const customAddress = shippingAddress || {};
       const totalPaid = data.purchase_units[0].payments.captures[0].amount.value;
       
-      const fullName = shipping.name.full_name.split(' ');
-      const firstName = fullName[0];
-      const lastName = fullName.slice(1).join(' ') || 'Customer';
-      const finalEmail = userEmail || payer.email_address;
+      // Safely parse Name from custom address first
+      let firstName = 'Valued';
+      let lastName = 'Customer';
+      if (customAddress.fullName) {
+        const parts = customAddress.fullName.trim().split(' ');
+        firstName = parts[0] || 'Valued';
+        lastName = parts.slice(1).join(' ') || 'Customer';
+      } else if (customAddress.first_name) {
+        firstName = customAddress.first_name;
+        lastName = customAddress.last_name || '';
+      }
+      
+      const finalEmail = userEmail || customAddress.email || data.payer?.email_address;
+      const finalPhone = customAddress.phone || "0000000000";
 
       // B. Translate Cart Items to Printify's exact format
       const line_items = cart.map(item => ({
@@ -67,7 +78,7 @@ export async function POST(req) {
         quantity: item.quantity
       }));
 
-      // C. Tell Printify to make the shirts
+      // C. Tell Printify to make the shirts using YOUR REAL address, not PayPal's
       const printifyRes = await fetch(`https://api.printify.com/v1/shops/${PRINTIFY_SHOP_ID}/orders.json`, {
         method: 'POST',
         headers: {
@@ -84,13 +95,13 @@ export async function POST(req) {
             first_name: firstName,
             last_name: lastName,
             email: finalEmail,
-            phone: "0000000000",
-            country: shipping.address.country_code,
-            region: shipping.address.admin_area_1 || '',
-            address1: shipping.address.address_line_1,
-            address2: shipping.address.address_line_2 || '',
-            city: shipping.address.admin_area_2 || '',
-            zip: shipping.address.postal_code
+            phone: finalPhone,
+            country: customAddress.country || 'US',
+            region: customAddress.state || '',
+            address1: customAddress.address_1 || '',
+            address2: customAddress.address_2 || '',
+            city: customAddress.city || '',
+            zip: customAddress.postcode || ''
           }
         })
       });
@@ -104,7 +115,7 @@ export async function POST(req) {
         status: 'processing',
         total: totalPaid,
         printify_order_id: printifyOrder.id || null,
-        shipping_address: shipping.address,
+        shipping_address: customAddress, // MANAGER FIX: Save the REAL address to the DB
         items: cart,
         checkout_email: finalEmail
       };
@@ -125,12 +136,11 @@ export async function POST(req) {
       // F. FIRE THE RECEIPT EMAIL VIA RESEND
       // ==========================================
       try {
-        // Calculate subtotal and discount for the email display
         const subtotal = cart.reduce((sum, item) => sum + (Number(item.price || 0) * item.quantity), 0);
         const discountAmount = promoCode ? (subtotal * 0.10).toFixed(2) : "0.00";
 
         await resend.emails.send({
-          from: 'EthoHaiti <sakpase@ethohaiti.com>', // MUST be verified in Resend Dashboard
+          from: 'EthoHaiti <sakpase@ethohaiti.com>', 
           to: [finalEmail],
           subject: 'Order Confirmed: Your EthoHaiti gear is in the works. 🇭🇹',
           react: OrderReceipt({
@@ -140,19 +150,16 @@ export async function POST(req) {
             subtotal: subtotal.toFixed(2),
             discount: discountAmount,
             total: totalPaid,
-            shippingAddress: shippingAddress // Passed from frontend state
+            shippingAddress: customAddress // MANAGER FIX: Email gets the real address too
           })
         });
       } catch (emailError) {
-        // We log the error but don't crash the checkout process
         console.error("Failed to send receipt email:", emailError);
       }
 
-      // Return success to the frontend for the redirect
       return NextResponse.json({ status: "COMPLETED", orderID: orderID, email: finalEmail });
     }
 
-    // If payment failed, return the failure data
     return NextResponse.json(data);
 
   } catch (error) {

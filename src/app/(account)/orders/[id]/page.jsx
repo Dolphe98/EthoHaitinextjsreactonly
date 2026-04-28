@@ -229,16 +229,30 @@ export default function OrderDetailsPage() {
   const items = Array.isArray(order.items) ? order.items : [];
   const packages = Array.isArray(order.packages) ? order.packages : [];
   const hasSplitShipment = packages.length > 1;
-  const address = order.shipping_address || {};
+  // --- NEW ADDRESS PARSING LOGIC ---
+  let rawAddress = order.shipping_address || {};
+  // Fix: If your DB saves it as an array (like your profile data), extract the first object
+  if (Array.isArray(rawAddress) && rawAddress.length > 0) {
+    rawAddress = rawAddress[0];
+  }
+  const address = rawAddress;
 
   const determineStep = (status) => {
     const s = status?.toLowerCase() || '';
     if (s === 'delivered') return 4;
     if (s === 'shipped') return 3;
     if (s === 'in production' || s === 'processing') return 2;
-    return 1; 
+    return 1;
   };
   const currentStep = determineStep(order.status);
+
+  // Safely extract address fields using your exact real data keys, with PayPal fallbacks just in case
+  const customerName = address.fullName || `${address.first_name || ''} ${address.last_name || ''}`.trim() || 'Valued Customer';
+  const streetAddress = `${address.address_1 || address.address_line_1 || ''} ${address.address_2 || ''}`.trim();
+  const city = address.city || address.admin_area_2 || 'City not provided';
+  const state = address.state || address.admin_area_1 || address.region || '';
+  const zip = address.postcode || address.postal_code || address.zip || '';
+  const country = address.country || address.country_code || 'US';
 
   // --- ADDED RECEIPT DATA MAPPING HERE ---
   const orderDataForReceipt = {
@@ -246,11 +260,11 @@ export default function OrderDetailsPage() {
     date: new Date(order.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
     paymentMethod: order.payment_method_title || order.payment_method || "Online Payment",
     shippingAddress: {
-      name: `${address.first_name || address.firstName || ''} ${address.last_name || address.lastName || ''}`.trim() || 'Valued Customer',
-      street: `${address.address_1 || address.address1 || ''} ${address.address_2 || address.address2 || ''}`.trim(),
-      city: address.city || '',
-      state: address.state || address.region || '',
-      zip: address.postcode || address.zip || ''
+      name: isGuest ? "Customer (Guest)" : customerName,
+      street: isGuest ? "Address hidden for privacy" : streetAddress,
+      city: city,
+      state: state,
+      zip: zip
     },
     items: items.map(item => ({
       title: item.name,
@@ -260,9 +274,9 @@ export default function OrderDetailsPage() {
       price: Number(item.price) || 0,
       image: item.image || item.images?.[0]?.src || "/logoethohaiticom1.png"
     })),
-    subtotal: Number(order.total) || 0, 
-    shipping: 0, // Hardcoded to 0 since UI shows 'FREE'
-    taxes: 0,    // Hardcoded to 0 since UI shows 'FREE'
+    subtotal: Number(order.total) || 0,
+    shipping: 0,
+    taxes: 0,
     grandTotal: Number(order.total) || 0
   };
   // ----------------------------------------
@@ -484,15 +498,15 @@ export default function OrderDetailsPage() {
             {isGuest ? (
               <div className="space-y-1">
                 <p className="text-sm text-gray-600 italic mb-2">Street address hidden for privacy.</p>
-                <p className="text-sm font-bold text-ethoDark">{address.city || 'City Hidden'}, {address.state || address.region || 'State Hidden'}</p>
-                <p className="text-sm text-gray-500">{address.country === 'US' ? 'United States' : address.country}</p>
+                <p className="text-sm font-bold text-ethoDark">{city}, {state}</p>
+                <p className="text-sm text-gray-500">{country === 'US' ? 'United States' : country}</p>
               </div>
             ) : (
               <div className="space-y-1 text-sm text-gray-600">
-                <p className="font-bold text-ethoDark">{address.first_name || address.firstName} {address.last_name || address.lastName}</p>
-                <p>{address.address_1 || address.address1}</p>
-                {(address.address_2 || address.address2) && <p>{address.address_2 || address.address2}</p>}
-                <p>{address.city}, {address.state || address.region} {address.postcode || address.zip}</p>
+                <p className="font-bold text-ethoDark">{customerName}</p>
+                <p>{address.address_1 || address.address_line_1}</p>
+                {(address.address_2) && <p>{address.address_2}</p>}
+                <p>{city}, {state} {zip}</p>
               </div>
             )}
           </div>
