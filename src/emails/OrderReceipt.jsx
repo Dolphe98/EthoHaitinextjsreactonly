@@ -42,9 +42,9 @@ export default function OrderReceipt({
             
             {/* A. THE HEADER (Brand Authority) */}
             <Section className="text-center py-6">
-              {/* Replace this src with your actual hosted high-contrast logo URL */}
+              {/* THE FIX: Absolute URL pointing to your live domain so email clients can see it */}
               <Img 
-                src="https://placehold.co/300x100.png?text=EthoHaiti+Logo" 
+                src="https://www.ethohaiti.com/logoethohaiticom1.png" 
                 width="150" 
                 alt="EthoHaiti" 
                 className="mx-auto mb-2" 
@@ -164,8 +164,9 @@ export default function OrderReceipt({
 
             {/* G. THE VIP SUPPORT FOOTER */}
             <Section className="bg-[#111111] px-8 py-8 text-center">
+              {/* THE FIX: Updated quote text to match exactly what you wanted */}
               <Text className="m-0 text-base font-bold italic text-white mb-6">
-                "Thank you for repping the culture. Wear it with pride."
+                "Thank you for representing the culture. Wear it with pride."
               </Text>
               <Button 
                 href={`https://ethohaiti.com/orders/${orderId.replace('Order #', '')}`}
