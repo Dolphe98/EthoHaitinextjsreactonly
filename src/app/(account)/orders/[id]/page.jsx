@@ -8,6 +8,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { createClient } from '@/lib/supabase';
 import { formatPrice } from '@/utils/formatPrice';
+import { formatPhoneNumber } from '@/utils/formatPhone';
 import ReceiptTemplate from '@/components/orders/ReceiptTemplate';
 
 export default function OrderDetailsPage() {
@@ -318,7 +319,7 @@ export default function OrderDetailsPage() {
                   type="tel" 
                   placeholder="Enter the phone number used at checkout"
                   value={cancelPhone}
-                  onChange={(e) => setCancelPhone(e.target.value)}
+                  onChange={(e) => setCancelPhone(formatPhoneNumber(e.target.value))}
                   className="w-full px-4 py-3 border border-gray-300 rounded focus:ring-2 focus:ring-haitiRed outline-none text-black text-sm"
                 />
               </div>

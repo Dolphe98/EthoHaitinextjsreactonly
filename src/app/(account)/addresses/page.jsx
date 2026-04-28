@@ -5,6 +5,7 @@ import { useAuthStore } from '@/store/authStore';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase'; 
+import { formatPhoneNumber } from '@/utils/formatPhone';
 
 export default function AddressesPage() {
   const { token, user } = useAuthStore();
@@ -83,7 +84,9 @@ export default function AddressesPage() {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setCurrentForm((prev) => ({ ...prev, [name]: value }));
+    // Intercept the phone input and format it automatically
+    const finalValue = name === 'phone' ? formatPhoneNumber(value) : value;
+    setCurrentForm((prev) => ({ ...prev, [name]: finalValue }));
   };
 
   // 2. Save Address (Direct to Supabase, no external API checks)
