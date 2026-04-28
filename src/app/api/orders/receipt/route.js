@@ -35,31 +35,46 @@ export async function POST(req) {
     // If the total paid is less than the subtotal, we know a promo code was used
     const discountAmount = subtotal > totalPaid ? (subtotal - totalPaid).toFixed(2) : "0.00";
 
-    // 3. Format the customer name
-    const address = order.shipping_address || {};
-    const firstName = address.first_name || address.firstName || 'Valued Customer';
-    const lastName = address.last_name || address.lastName || '';
+    // 3. THE FIX: Format the customer address (Handle the Array bug safely!)
+    let rawAddress = order.shipping_address || {};
+    if (Array.isArray(rawAddress) && rawAddress.length > 0) {
+      rawAddress = rawAddress[0];
+    }
+    const address = rawAddress;
 
-    // 4. Fire the email via Resend
-    await resend.emails.send({
+    const customerName = address.fullName || `${address.first_name || ''} ${address.last_name || ''}`.trim() || 'Valued Customer';
+    
+    // 4. THE FIX: Safely extract the email so Resend doesn't crash
+    const finalEmail = order.checkout_email || address.email;
+    if (!finalEmail) {
+      console.error("No email address found to send receipt to for order:", orderId);
+      return NextResponse.json({ error: "No email address found for this order." }, { status: 400 });
+    }
+
+    // 5. Fire the email via Resend
+    const { data, error: resendError } = await resend.emails.send({
       from: 'EthoHaiti <sakpase@ethohaiti.com>',
-      to: [order.checkout_email],
+      to: [finalEmail],
       subject: `Receipt for Order #${orderId.substring(0,8).toUpperCase()}`,
       react: OrderReceipt({
-        // MANAGER UPDATE: Mapped this exactly to our Blueprint standards
         orderId: `Order #${orderId.substring(0, 8).toUpperCase()}`,
         paymentMethod: order.payment_method_title || order.payment_method || "Online Payment",
-        customerName: `${firstName} ${lastName}`.trim(),
+        customerName: customerName,
         items: items,
         subtotal: subtotal.toFixed(2),
         shipping: "0.00", 
         taxes: "0.00",
         discount: discountAmount,
         total: totalPaid.toFixed(2),
-        shippingAddress: address,
+        shippingAddress: address, // Now it is safely an object, not an array
         date: new Date(order.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
       })
     });
+
+    // If Resend kicks back an error (like an unverified domain), throw it so we can log it
+    if (resendError) {
+      throw resendError;
+    }
 
     return NextResponse.json({ success: true });
 
