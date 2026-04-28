@@ -55,9 +55,9 @@ export async function POST(req) {
     const { data, error: resendError } = await resend.emails.send({
       from: 'EthoHaiti <sakpase@ethohaiti.com>',
       to: [finalEmail],
-      subject: `Receipt for Order #${orderId.substring(0,8).toUpperCase()}`,
+      subject: `Receipt for Order #${orderId.toUpperCase()}`,
       react: OrderReceipt({
-        orderId: `Order #${orderId.substring(0, 8).toUpperCase()}`,
+        orderId: `Order #${orderId.toUpperCase()}`,
         paymentMethod: order.payment_method_title || order.payment_method || "Online Payment",
         customerName: customerName,
         items: items,

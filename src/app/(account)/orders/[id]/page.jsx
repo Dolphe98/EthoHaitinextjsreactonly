@@ -266,7 +266,7 @@ export default function OrderDetailsPage() {
   const discountAmount = referral?.promo_code && subtotal > totalPaid ? (subtotal - totalPaid).toFixed(2) : "0.00";
 
   const orderDataForReceipt = {
-    orderNumber: `Order #${order.id.substring(0, 8).toUpperCase()}`,
+    orderNumber: `Order #${order.id.toUpperCase()}`,
     date: new Date(order.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
     paymentMethod: order.payment_method_title || order.payment_method || "Online Payment",
     shippingAddress: {
@@ -367,7 +367,7 @@ export default function OrderDetailsPage() {
 
         <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-6 gap-4">
           <div>
-            <h1 className="text-3xl font-extrabold text-ethoDark">Order #{order.id.substring(0, 8).toUpperCase()}</h1>
+            <h1 className="text-3xl font-extrabold text-ethoDark">Order #{order.id.toUpperCase()}</h1>
             {currentStep <= 2 && !isWholeOrderCanceled && (
               <p className="text-green-600 font-bold mt-2 flex items-center gap-1">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg>
