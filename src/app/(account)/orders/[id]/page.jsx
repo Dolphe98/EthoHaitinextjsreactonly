@@ -21,7 +21,7 @@ export default function OrderDetailsPage() {
   const supabase = createClient();
 
   const [order, setOrder] = useState(null);
-  const [referral, setReferral] = useState(null); // MANAGER FIX: New State for Promo Code
+  const [referral, setReferral] = useState(null); // State for Promo Code
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [isGuest, setIsGuest] = useState(false);
@@ -78,13 +78,13 @@ export default function OrderDetailsPage() {
 
         setOrder(orderDataToSet);
 
-        // MANAGER FIX: Fetch promo code info from referrals table
+        // MANAGER FIX: Fetch promo code info safely using maybeSingle()
         if (orderDataToSet?.id) {
           const { data: refData } = await supabase
             .from('referrals')
             .select('promo_code')
             .eq('order_id', orderDataToSet.id)
-            .single();
+            .maybeSingle(); // Prevents 406 crash if no promo code exists
           
           if (refData) {
             setReferral(refData);
