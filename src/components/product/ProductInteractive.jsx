@@ -216,7 +216,7 @@ export default function ProductInteractive({ product }) {
         {/* MANAGER FIX: Only show if > 1 image        */}
         {/* ========================================== */}
         {images.length > 1 ? (
-          <div className="hidden lg:flex flex-col gap-3 lg:col-span-1 sticky top-[120px] self-start max-h-[calc(100vh-140px)] overflow-y-auto no-scrollbar pb-4">
+          <div className="hidden lg:flex flex-col gap-3 lg:col-span-1 relative lg:sticky lg:top-[120px] self-start max-h-[calc(100vh-140px)] overflow-y-auto no-scrollbar pb-4">
             {images.map((img, index) => (
               <button 
                 key={index} 
@@ -235,18 +235,19 @@ export default function ProductInteractive({ product }) {
         )}
 
         {/* ========================================== */}
-        {/* COL 2: HERO STAGE (STICKY, ~40%)           */}
+        {/* COL 2: HERO STAGE                          */}
         {/* ========================================== */}
-        <div className="lg:col-span-5 sticky top-[120px] self-start w-full relative">
+        <div className="lg:col-span-5 relative lg:sticky lg:top-[120px] lg:self-start w-full">
           
           <button onClick={handleShare} className="absolute top-4 right-4 z-10 bg-white/90 backdrop-blur-sm p-3 rounded-full text-ethoDark shadow-lg hover:scale-110 transition-transform">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" /></svg>
           </button>
 
+          {/* DESKTOP CAROUSEL (Hidden on Mobile) */}
           <div 
             ref={carouselRef}
             onScroll={handleScroll}
-            className="flex overflow-x-auto snap-x snap-mandatory rounded-2xl bg-gray-50 border border-gray-200 aspect-square [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']"
+            className="hidden lg:flex overflow-x-auto snap-x snap-mandatory rounded-2xl bg-gray-50 border border-gray-200 aspect-square [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']"
           >
             {images.map((img, index) => (
               <div key={index} className="min-w-full h-full snap-center relative flex items-center justify-center p-2">
@@ -262,14 +263,29 @@ export default function ProductInteractive({ product }) {
             ))}
           </div>
 
-          {/* Mobile Dots Pagination (Hidden if 1 image) */}
+          {/* MOBILE MAIN IMAGE (Hidden on Desktop) */}
+          <div className="flex lg:hidden rounded-2xl bg-gray-50 border border-gray-200 aspect-square relative items-center justify-center p-2">
+             <Image 
+               src={images[activeImgIndex]?.src || images[0]?.src}
+               alt={`${cleanName} main`} 
+               fill
+               sizes="100vw"
+               className="object-contain mix-blend-multiply"
+               priority
+             />
+          </div>
+
+          {/* MOBILE THUMBNAILS (Replaces the dots) */}
           {images.length > 1 && (
-            <div className="flex lg:hidden justify-center gap-2 mt-4">
-              {images.map((_, index) => (
-                <div 
-                  key={index} 
-                  className={`transition-all duration-300 rounded-full ${index === activeImgIndex ? 'w-6 h-2 bg-haitiBlue' : 'w-2 h-2 bg-gray-300'}`}
-                />
+            <div className="flex lg:hidden gap-3 mt-4 overflow-x-auto no-scrollbar pb-2">
+              {images.map((img, index) => (
+                <button 
+                  key={index}
+                  onClick={() => setActiveImgIndex(index)}
+                  className={`relative w-20 h-20 rounded-xl border-2 overflow-hidden flex-shrink-0 transition-all ${activeImgIndex === index ? 'border-haitiBlue ring-2 ring-blue-100' : 'border-gray-200 hover:border-gray-300'}`}
+                >
+                  <Image src={img.src} alt={`${cleanName} thumb ${index + 1}`} fill sizes="80px" className="object-cover" />
+                </button>
               ))}
             </div>
           )}
@@ -371,7 +387,6 @@ export default function ProductInteractive({ product }) {
                   <svg className={`w-5 h-5 text-gray-500 transition-transform duration-300 ${sizeTableOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
                 </button>
                 <div className={`overflow-hidden transition-all duration-300 ease-in-out ${sizeTableOpen ? 'max-h-[1500px] opacity-100 pb-6' : 'max-h-0 opacity-0'}`}>
-                   {/* We wrap the table inside an overflow-x-auto container so it scrolls nicely on mobile instead of breaking the screen */}
                    <div 
                      className="prose prose-sm text-gray-600 max-w-none overflow-x-auto [&_table]:min-w-full [&_table]:border-collapse [&_th]:bg-gray-100 [&_th]:border [&_th]:border-gray-200 [&_th]:p-2 [&_td]:border [&_td]:border-gray-200 [&_td]:p-2"
                      dangerouslySetInnerHTML={{ __html: sizeTableHtml }}
@@ -391,17 +406,14 @@ export default function ProductInteractive({ product }) {
               </button>
               
               <div className={`overflow-hidden transition-all duration-300 ease-in-out ${accordionOpen ? 'max-h-[1000px] opacity-100 pb-6' : 'max-h-0 opacity-0'}`}>
-                 {/* The Clamping Wrapper */}
                  <div className={`prose prose-sm text-gray-600 leading-relaxed relative max-w-none ${descStep === 1 ? 'line-clamp-3 lg:line-clamp-none overflow-hidden' : descStep === 2 ? 'line-clamp-6 lg:line-clamp-none overflow-hidden' : ''}`}>
                     <div dangerouslySetInnerHTML={{ __html: mainDescriptionHtml }}></div>
                     
-                    {/* Fade-out Gradient (Mobile Only) */}
                     {descStep < 3 && (
                       <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-ethoBg to-transparent lg:hidden pointer-events-none"></div>
                     )}
                  </div>
                  
-                 {/* Show More/Less Button (Mobile Only) */}
                  <button 
                    onClick={handleDescToggle}
                    className="mt-3 text-haitiBlue font-bold text-sm lg:hidden hover:underline"
@@ -415,9 +427,9 @@ export default function ProductInteractive({ product }) {
         </div>
 
         {/* ========================================== */}
-        {/* COL 4: THE BUY BOX (STICKY, ~20%)          */}
+        {/* COL 4: THE BUY BOX                         */}
         {/* ========================================== */}
-        <div className="lg:col-span-2 sticky top-[120px] self-start flex flex-col gap-3">
+        <div className="lg:col-span-2 relative lg:sticky lg:top-[120px] lg:self-start flex flex-col gap-3">
           
           {cartError && (
             <div className="text-haitiRed text-sm font-bold bg-red-50 p-3 rounded-lg border border-red-200 flex items-center gap-2 animate-pulse">
@@ -454,7 +466,6 @@ export default function ProductInteractive({ product }) {
             ) : (
               <>
                 <svg className="w-6 h-6 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg>
-                {/* MANAGER FIX: Added whitespace-nowrap to prevent text from breaking into two lines */}
                 <span className="whitespace-nowrap">Buy via WhatsApp</span>
               </>
             )}
