@@ -36,27 +36,27 @@ body {
     visibility: visible;
   }
 
-  /* 3. THE GHOST PAGE KILLER: Collapse ALL heights, paddings, and margins of invisible wrappers to zero so they take up no physical space */
+  /* 3. THE GHOST PAGE KILLER: Collapse heights and strictly hide overflow to prevent extra pages */
   body, html, main, section, div, header, footer {
     position: static !important;
     min-height: 0 !important;
     height: auto !important;
     padding: 0 !important;
     margin: 0 !important;
-    overflow: visible !important;
+    overflow: hidden !important; /* This is the scissors that cuts off the blank second page */
   }
 
-  /* 4. THE NUKE: Pin the receipt to the very top left using fixed positioning */
+  /* 4. THE FIX: Revert to absolute so it doesn't repeat like a header */
   #printable-receipt {
     display: block !important;
-    position: fixed !important;
+    position: absolute !important;
     top: 0 !important;
     left: 0 !important;
-    width: 100vw !important;
+    width: 100% !important; /* Force full width */
     margin: 0 !important;
     padding: 0 !important;
-    transform: none !important;
     color: #000 !important; 
+    overflow: visible !important; /* Ensure the receipt itself isn't cut off */
   }
 
   @page {

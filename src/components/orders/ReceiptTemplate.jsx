@@ -80,6 +80,15 @@ export default function ReceiptTemplate({ orderData }) {
             <span>Subtotal:</span>
             <span>${orderData.subtotal.toFixed(2)}</span>
           </div>
+          
+          {/* MANAGER FIX: DYNAMIC DISCOUNT ROW */}
+          {orderData.promoCode && Number(orderData.discountAmount) > 0 && (
+            <div className="flex justify-between py-1 font-bold text-black">
+              <span>Discount ({orderData.promoCode}):</span>
+              <span>-${Number(orderData.discountAmount).toFixed(2)}</span>
+            </div>
+          )}
+
           <div className="flex justify-between py-1">
             <span>Shipping:</span>
             <span className="font-bold text-black">FREE</span>

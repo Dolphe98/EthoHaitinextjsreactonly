@@ -8,7 +8,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { createClient } from '@/lib/supabase';
 import { formatPrice } from '@/utils/formatPrice';
-import ReceiptTemplate from '@/components/orders/ReceiptTemplate'; // Added Import
+import ReceiptTemplate from '@/components/orders/ReceiptTemplate';
 
 export default function OrderDetailsPage() {
   const { id } = useParams();
@@ -21,6 +21,7 @@ export default function OrderDetailsPage() {
   const supabase = createClient();
 
   const [order, setOrder] = useState(null);
+  const [referral, setReferral] = useState(null); // MANAGER FIX: New State for Promo Code
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [isGuest, setIsGuest] = useState(false);
@@ -41,6 +42,8 @@ export default function OrderDetailsPage() {
   useEffect(() => {
     async function fetchOrder() {
       try {
+        let orderDataToSet = null;
+
         if (emailParam) {
           setIsGuest(true);
           const res = await fetch('/api/orders/guest-lookup', {
@@ -55,7 +58,7 @@ export default function OrderDetailsPage() {
           }
 
           if (!res.ok) throw new Error(data.error || "Order not found");
-          setOrder(data.order);
+          orderDataToSet = data.order;
         } else {
           if (!user?.id) {
             router.push('/orders');
@@ -70,8 +73,24 @@ export default function OrderDetailsPage() {
           if (sbError || !data) throw new Error("Order not found or access denied.");
           if (data.user_id !== user.id) throw new Error("Access denied.");
           
-          setOrder(data);
+          orderDataToSet = data;
         }
+
+        setOrder(orderDataToSet);
+
+        // MANAGER FIX: Fetch promo code info from referrals table
+        if (orderDataToSet?.id) {
+          const { data: refData } = await supabase
+            .from('referrals')
+            .select('promo_code')
+            .eq('order_id', orderDataToSet.id)
+            .single();
+          
+          if (refData) {
+            setReferral(refData);
+          }
+        }
+
       } catch (err) {
         setError(err.message);
       } finally {
@@ -97,8 +116,8 @@ export default function OrderDetailsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           orderId: order.id,
-          itemId: itemToCancel.id, // Target the specific item
-          itemIndex: itemToCancel.index, // Array index for the backend
+          itemId: itemToCancel.id,
+          itemIndex: itemToCancel.index,
           userId: user?.id,
           isGuest: isGuest,
           phone: cancelPhone
@@ -108,11 +127,9 @@ export default function OrderDetailsPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to cancel item.");
 
-      // Success! Instantly update UI for this specific line item
       const updatedItems = [...order.items];
       updatedItems[itemToCancel.index] = { ...updatedItems[itemToCancel.index], status: 'cancelled' };
       
-      // If ALL items happen to be cancelled now, mark the whole order as cancelled
       const allCancelled = updatedItems.every(i => i.status === 'cancelled' || i.status === 'canceled');
 
       setOrder({ 
@@ -120,7 +137,7 @@ export default function OrderDetailsPage() {
         items: updatedItems,
         status: allCancelled ? 'cancelled' : order.status 
       });
-      setItemToCancel(null); // Close modal
+      setItemToCancel(null); 
       
     } catch (err) {
       setCancelError(err.message);
@@ -168,7 +185,6 @@ export default function OrderDetailsPage() {
     }
   };
 
-  // MANAGER FIX: Enhanced the loading state into a high-fidelity Skeleton UI
   if (loading) {
     return (
       <main className="pt-32 pb-20 min-h-screen bg-ethoBg relative">
@@ -176,11 +192,7 @@ export default function OrderDetailsPage() {
           <div className="h-4 w-24 bg-gray-200 rounded mb-6"></div>
           <div className="h-10 w-64 bg-gray-200 rounded mb-2"></div>
           <div className="h-4 w-48 bg-gray-200 rounded mb-6"></div>
-
-          {/* Timeline Skeleton */}
           <div className="bg-white rounded-xl border border-gray-100 h-32 w-full mb-8 shadow-sm"></div>
-          
-          {/* Items Skeleton */}
           <div className="bg-white rounded-xl border border-gray-100 w-full mb-8 shadow-sm overflow-hidden">
             <div className="h-16 border-b border-gray-100 bg-gray-50"></div>
             <div className="p-6 space-y-4">
@@ -193,8 +205,6 @@ export default function OrderDetailsPage() {
               </div>
             </div>
           </div>
-
-          {/* Details Skeleton */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="bg-white rounded-xl border border-gray-100 h-48 w-full shadow-sm"></div>
             <div className="bg-white rounded-xl border border-gray-100 h-48 w-full shadow-sm"></div>
@@ -217,11 +227,9 @@ export default function OrderDetailsPage() {
     );
   }
 
-  // Security & Timing Logic
   const hoursSinceOrder = (new Date() - new Date(order.created_at)) / (1000 * 60 * 60);
   const isWholeOrderCanceled = order.status === 'cancelled' || order.status === 'canceled';
   
-  // Per Blueprint: Only allow cancels if the order status is "Processing". Once it hits "In Production", it's locked.
   const orderStatusStr = order.status?.toLowerCase() || '';
   const isProcessing = orderStatusStr === 'processing' || orderStatusStr === 'pending';
   const canCancelOrderLevel = hoursSinceOrder <= 6 && !isWholeOrderCanceled && isProcessing;
@@ -229,9 +237,8 @@ export default function OrderDetailsPage() {
   const items = Array.isArray(order.items) ? order.items : [];
   const packages = Array.isArray(order.packages) ? order.packages : [];
   const hasSplitShipment = packages.length > 1;
-  // --- NEW ADDRESS PARSING LOGIC ---
+
   let rawAddress = order.shipping_address || {};
-  // Fix: If your DB saves it as an array (like your profile data), extract the first object
   if (Array.isArray(rawAddress) && rawAddress.length > 0) {
     rawAddress = rawAddress[0];
   }
@@ -246,7 +253,6 @@ export default function OrderDetailsPage() {
   };
   const currentStep = determineStep(order.status);
 
-  // Safely extract address fields using your exact real data keys, with PayPal fallbacks just in case
   const customerName = address.fullName || `${address.first_name || ''} ${address.last_name || ''}`.trim() || 'Valued Customer';
   const streetAddress = `${address.address_1 || address.address_line_1 || ''} ${address.address_2 || ''}`.trim();
   const city = address.city || address.admin_area_2 || 'City not provided';
@@ -254,7 +260,11 @@ export default function OrderDetailsPage() {
   const zip = address.postcode || address.postal_code || address.zip || '';
   const country = address.country || address.country_code || 'US';
 
-  // --- ADDED RECEIPT DATA MAPPING HERE ---
+  // MANAGER FIX: Discount Math Calculation
+  const subtotal = items.reduce((sum, item) => sum + (Number(item.price || 0) * item.quantity), 0);
+  const totalPaid = Number(order.total) || 0;
+  const discountAmount = referral?.promo_code && subtotal > totalPaid ? (subtotal - totalPaid).toFixed(2) : "0.00";
+
   const orderDataForReceipt = {
     orderNumber: `Order #${order.id.substring(0, 8).toUpperCase()}`,
     date: new Date(order.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
@@ -274,17 +284,17 @@ export default function OrderDetailsPage() {
       price: Number(item.price) || 0,
       image: item.image || item.images?.[0]?.src || "/logoethohaiticom1.png"
     })),
-    subtotal: Number(order.total) || 0,
+    subtotal: subtotal, 
+    promoCode: referral?.promo_code || null, // Passes the code
+    discountAmount: discountAmount,          // Passes the math
     shipping: 0,
     taxes: 0,
-    grandTotal: Number(order.total) || 0
+    grandTotal: totalPaid
   };
-  // ----------------------------------------
 
   return (
     <main className="pt-32 pb-20 min-h-screen bg-ethoBg relative">
       
-      {/* TOAST NOTIFICATION: ITEM REPLACED */}
       {toastMessage && (
         <div className="fixed bottom-10 left-1/2 transform -translate-x-1/2 z-[100] bg-ethoDark text-white px-6 py-3 rounded-full shadow-lg font-bold flex items-center gap-2 text-sm animate-in slide-in-from-bottom-5">
           <svg className="w-5 h-5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" /></svg>
@@ -293,7 +303,6 @@ export default function OrderDetailsPage() {
         </div>
       )}
 
-      {/* LINE-ITEM CANCELLATION MODAL */}
       {itemToCancel && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 border-t-4 border-haitiRed">
@@ -336,7 +345,6 @@ export default function OrderDetailsPage() {
           {isGuest ? "Back to Home" : "Back to Orders"}
         </Link>
 
-        {/* 6-HOUR STRICT POLICY BANNER */}
         {!isWholeOrderCanceled && (
           <div className="bg-red-50 border border-red-200 p-4 rounded-lg flex items-start gap-3 mb-6 shadow-sm">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 text-haitiRed mt-0.5 flex-shrink-0"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
@@ -372,7 +380,6 @@ export default function OrderDetailsPage() {
           <div className="flex flex-col items-end gap-3">
             {isGuest && <span className="bg-yellow-100 text-yellow-800 text-xs font-bold px-3 py-1 rounded-full w-max">Guest View</span>}
             
-            {/* ACTION BUTTONS: Print & Email Receipt */}
             <div className="flex items-center gap-3">
               <button 
                 onClick={() => window.print()} 
@@ -401,7 +408,6 @@ export default function OrderDetailsPage() {
           </div>
         </div>
 
-        {/* Global Timeline */}
         {!hasSplitShipment && !isWholeOrderCanceled && (
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 md:p-8 mb-8">
             <div className="flex items-center justify-between mb-8 relative">
@@ -420,7 +426,6 @@ export default function OrderDetailsPage() {
           </div>
         )}
 
-        {/* Items List with Individual Actions */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-8">
            <div className="p-4 sm:p-6 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
               <h2 className="font-extrabold text-lg text-ethoDark">Items in Order</h2>
@@ -436,7 +441,6 @@ export default function OrderDetailsPage() {
                       <div className="w-16 h-16 bg-gray-100 rounded border border-gray-200 flex items-center justify-center overflow-hidden flex-shrink-0 p-1 relative">
                         {isItemCanceled && <div className="absolute inset-0 bg-white/50 z-10 backdrop-blur-[1px]"></div>}
                         
-                        {/* MANAGER FIX: Replaced native <img /> with optimized Next.js <Image /> */}
                         {item.image ? (
                           <Image 
                             src={item.image} 
@@ -448,7 +452,6 @@ export default function OrderDetailsPage() {
                         ) : (
                           <div className="w-full h-full bg-gray-200"></div>
                         )}
-
                       </div>
                       <div>
                         <p className={`font-bold text-ethoDark text-sm sm:text-base line-clamp-1 ${isItemCanceled ? 'line-through text-gray-400' : ''}`}>
@@ -467,7 +470,6 @@ export default function OrderDetailsPage() {
                       </div>
                     </div>
                     
-                    {/* ACTION ZONE: TRASH CAN OR REORDER BUTTON */}
                     {isItemCanceled ? (
                       <button 
                         onClick={() => handleReplaceItem(item)}
@@ -516,8 +518,17 @@ export default function OrderDetailsPage() {
              <div className="space-y-3 text-sm">
                 <div className="flex justify-between text-gray-600">
                   <span>Subtotal</span>
-                  <span className={isWholeOrderCanceled ? "line-through text-gray-400" : ""}>{formatPrice(order.total)}</span>
+                  <span className={isWholeOrderCanceled ? "line-through text-gray-400" : ""}>{formatPrice(subtotal)}</span>
                 </div>
+                
+                {/* MANAGER FIX: SHOW THE DISCOUNT IN THE WEB UI IF IT EXISTS */}
+                {referral?.promo_code && Number(discountAmount) > 0 && (
+                  <div className="flex justify-between font-bold text-green-600">
+                    <span>Discount ({referral.promo_code})</span>
+                    <span>-{formatPrice(discountAmount)}</span>
+                  </div>
+                )}
+
                 <div className="flex justify-between text-gray-600">
                   <span>Shipping & Taxes</span>
                   <span className="text-green-600 font-bold tracking-wide">FREE</span>
