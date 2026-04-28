@@ -246,8 +246,8 @@ export default function OrderDetailsPage() {
     date: new Date(order.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
     paymentMethod: order.payment_method_title || order.payment_method || "Online Payment",
     shippingAddress: {
-      name: isGuest ? "Customer (Guest)" : `${address.first_name || address.firstName || ''} ${address.last_name || address.lastName || ''}`.trim(),
-      street: isGuest ? "Address hidden for privacy" : address.address_1 || address.address1 || '',
+      name: `${address.first_name || address.firstName || ''} ${address.last_name || address.lastName || ''}`.trim() || 'Valued Customer',
+      street: `${address.address_1 || address.address1 || ''} ${address.address_2 || address.address2 || ''}`.trim(),
       city: address.city || '',
       state: address.state || address.region || '',
       zip: address.postcode || address.zip || ''
@@ -258,7 +258,7 @@ export default function OrderDetailsPage() {
       color: item.selectedColor || "N/A",
       qty: item.quantity || 1,
       price: Number(item.price) || 0,
-      image: item.image || item.images?.[0]?.src || "/logo-black.png"
+      image: item.image || item.images?.[0]?.src || "/logoethohaiticom1.png"
     })),
     subtotal: Number(order.total) || 0, 
     shipping: 0, // Hardcoded to 0 since UI shows 'FREE'

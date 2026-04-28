@@ -25,36 +25,39 @@ body {
 }
 
 @media print {
-  /* 1. Hide everything on the page visually, but keep the structure */
+  /* 1. Hide everything visually */
   body * {
     visibility: hidden;
   }
 
-  /* 2. Target the receipt and ALL its children, forcing them to be visible */
+  /* 2. Make receipt and its children visible */
   #printable-receipt, 
   #printable-receipt * {
     visibility: visible;
   }
 
-  /* 3. Strip relative positioning from Next.js wrappers so it doesn't get pushed off-screen */
-  body, html, main, section, div {
+  /* 3. THE GHOST PAGE KILLER: Collapse ALL heights, paddings, and margins of invisible wrappers to zero so they take up no physical space */
+  body, html, main, section, div, header, footer {
     position: static !important;
+    min-height: 0 !important;
+    height: auto !important;
+    padding: 0 !important;
+    margin: 0 !important;
     overflow: visible !important;
   }
 
-  /* 4. Force display and pin it to the very top left of the paper */
+  /* 4. Pin the receipt to the very top left */
   #printable-receipt {
     display: block !important;
     position: absolute;
     left: 0;
     top: 0;
-    width: 100%;
+    width: 100% !important; /* Force full width */
     margin: 0;
     padding: 0;
     color: #000 !important; 
   }
 
-  /* Force background colors and remove margins for a clean print */
   @page {
     margin: 0.5cm;
     size: auto;

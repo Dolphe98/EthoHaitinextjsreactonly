@@ -5,7 +5,7 @@ export default function ReceiptTemplate({ orderData }) {
   if (!orderData) return null;
 
   return (
-    <div id="printable-receipt" className="hidden print:block w-full max-w-3xl mx-auto bg-white text-black print:p-2 print:text-sm">
+    <div id="printable-receipt" className="hidden print:block w-full max-w-full mx-auto bg-white text-black print:p-2 print:text-sm">
       
       {/* 1. The Header (Brand Authority) */}
       <div className="flex flex-col items-center justify-center pb-4 mb-6 border-b border-gray-300">
