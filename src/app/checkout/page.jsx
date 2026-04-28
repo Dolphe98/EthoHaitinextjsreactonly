@@ -9,6 +9,7 @@ import { useAuthStore } from '@/store/authStore';
 import { createClient } from '@/lib/supabase';
 import { formatPrice } from '@/utils/formatPrice';
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
+import { formatPhoneNumber } from '@/utils/formatPhone';
 
 // CUSTOM DROPDOWN TO BYPASS NATIVE MOBILE OS WHEELS
 function CustomSelect({ options, value, onChange, placeholder, hasError }) {
@@ -212,7 +213,12 @@ export default function CheckoutPage() {
     }
   };
   
-  const handleGuestChange = (e) => { setGuestForm({ ...guestForm, [e.target.name]: e.target.value }); };
+  const handleGuestChange = (e) => { 
+  const { name, value } = e.target;
+  // If the input is the phone field, run it through our formatter
+  const finalValue = name === 'phone' ? formatPhoneNumber(value) : value;
+  setGuestForm({ ...guestForm, [name]: finalValue }); 
+};
 
   if (!mounted) {
     return (
