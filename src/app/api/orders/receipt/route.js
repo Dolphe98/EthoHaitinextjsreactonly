@@ -38,21 +38,26 @@ export async function POST(req) {
     // 3. Format the customer name
     const address = order.shipping_address || {};
     const firstName = address.first_name || address.firstName || 'Valued Customer';
+    const lastName = address.last_name || address.lastName || '';
 
     // 4. Fire the email via Resend
     await resend.emails.send({
       from: 'EthoHaiti <sakpase@ethohaiti.com>',
       to: [order.checkout_email],
-      subject: `Receipt for Order #${orderId.substring(0,6).toUpperCase()}`,
+      subject: `Receipt for Order #${orderId.substring(0,8).toUpperCase()}`,
       react: OrderReceipt({
-        orderId: orderId,
-        customerName: firstName,
+        // MANAGER UPDATE: Mapped this exactly to our Blueprint standards
+        orderId: `Order #${orderId.substring(0, 8).toUpperCase()}`,
+        paymentMethod: order.payment_method_title || order.payment_method || "Online Payment",
+        customerName: `${firstName} ${lastName}`.trim(),
         items: items,
         subtotal: subtotal.toFixed(2),
+        shipping: "0.00", 
+        taxes: "0.00",
         discount: discountAmount,
         total: totalPaid.toFixed(2),
         shippingAddress: address,
-        date: new Date(order.created_at).toLocaleDateString()
+        date: new Date(order.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
       })
     });
 

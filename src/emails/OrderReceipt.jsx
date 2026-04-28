@@ -1,5 +1,6 @@
 import {
   Html,
+  Head,
   Body,
   Container,
   Section,
@@ -18,16 +19,18 @@ import * as React from 'react';
 
 export default function OrderReceipt({
   orderId = "12345",
+  paymentMethod = "Online Payment",
   customerName = "Valued Customer",
   items = [],
   subtotal = "0.00",
   shipping = "0.00",
+  taxes = "0.00",
   discount = "0.00",
   total = "0.00",
   shippingAddress = null,
   date = new Date().toLocaleDateString(),
 }) {
-  const previewText = `Order #ETH-${orderId} has been received. Here are your details...`;
+  const previewText = `${orderId} has been received. Here are your details...`;
 
   return (
     <Html>
@@ -37,15 +40,21 @@ export default function OrderReceipt({
         <Body className="bg-[#FAFAFA] font-sans m-0 py-10">
           <Container className="bg-white border border-gray-200 rounded-lg shadow-sm mx-auto max-w-[600px] overflow-hidden">
             
-            {/* A. THE HEADER */}
+            {/* A. THE HEADER (Brand Authority) */}
             <Section className="text-center py-6">
-              {/* Replace this src with your actual hosted logo URL */}
+              {/* Replace this src with your actual hosted high-contrast logo URL */}
               <Img 
                 src="https://placehold.co/300x100.png?text=EthoHaiti+Logo" 
                 width="150" 
                 alt="EthoHaiti" 
-                className="mx-auto" 
+                className="mx-auto mb-2" 
               />
+              <Link href="https://www.ethohaiti.com" className="text-sm font-medium text-black underline">
+                www.ethohaiti.com
+              </Link>
+              <Heading className="mt-4 text-xl font-bold tracking-widest text-[#111111] m-0">
+                ORDER RECEIPT
+              </Heading>
             </Section>
             <Hr className="border-gray-200 m-0" />
 
@@ -58,12 +67,12 @@ export default function OrderReceipt({
                 Hi {customerName},
               </Text>
               <Text className="text-base text-gray-700 leading-relaxed m-0 mb-6">
-                Thank you for repping the culture. We've received your order and are getting it ready for production. We will email you the tracking link as soon as it ships.
+                We've received your order and are getting it ready for production. We will email you the tracking link as soon as it ships.
               </Text>
               
               <Section className="bg-gray-50 rounded p-4 text-center border border-gray-100">
                 <Text className="m-0 text-sm font-bold text-gray-800">
-                  Order #ETH-{orderId} &nbsp;&bull;&nbsp; Placed on {date}
+                  {orderId} &nbsp;&bull;&nbsp; Placed on {date}
                 </Text>
               </Section>
             </Section>
@@ -80,7 +89,7 @@ export default function OrderReceipt({
 
             {/* D. THE ORDER SUMMARY */}
             <Section className="px-8 py-6">
-              <Heading className="text-lg font-bold text-[#111111] m-0 mb-4">Order Summary</Heading>
+              <Heading className="text-lg font-bold text-[#111111] m-0 mb-4">Line Items</Heading>
               
               {items.map((item, index) => (
                 <Section key={index} className="mb-4">
@@ -122,8 +131,9 @@ export default function OrderReceipt({
                   {Number(discount) > 0 && (
                     <Text className="m-0 text-sm text-green-600 font-bold mb-2">Discount: -${discount}</Text>
                   )}
-                  <Text className="m-0 text-sm text-gray-600 mb-4">Shipping: {shipping === "0.00" ? "FREE" : `$${shipping}`}</Text>
-                  <Text className="m-0 text-xl font-extrabold text-[#111111]">Total: ${total}</Text>
+                  <Text className="m-0 text-sm text-gray-600 mb-2">Shipping (Printify Standard): {shipping === "0.00" ? "FREE" : `$${shipping}`}</Text>
+                  <Text className="m-0 text-sm text-gray-600 mb-4 pb-4 border-b border-gray-200">Taxes: ${taxes}</Text>
+                  <Text className="m-0 text-2xl font-extrabold text-[#111111]">Grand Total: ${total}</Text>
                 </Column>
               </Row>
             </Section>
@@ -133,40 +143,45 @@ export default function OrderReceipt({
             <Section className="px-8 py-6">
               <Row>
                 <Column className="align-top w-1/2 pr-2">
-                  <Text className="m-0 text-sm font-bold text-[#111111] mb-2">Shipping to:</Text>
+                  <Text className="m-0 text-sm font-bold text-[#111111] mb-2">Ship To:</Text>
                   {shippingAddress ? (
                     <Text className="m-0 text-sm text-gray-600 leading-relaxed">
-                      {shippingAddress.fullName || `${shippingAddress.first_name} ${shippingAddress.last_name}`}<br />
+                      {shippingAddress.fullName || `${shippingAddress.first_name || ''} ${shippingAddress.last_name || ''}`.trim()}<br />
                       {shippingAddress.address_1}<br />
                       {shippingAddress.address_2 && <>{shippingAddress.address_2}<br /></>}
                       {shippingAddress.city}, {shippingAddress.state} {shippingAddress.postcode}<br />
-                      {shippingAddress.country}
                     </Text>
                   ) : (
                     <Text className="m-0 text-sm text-gray-600">Address provided at checkout.</Text>
                   )}
                 </Column>
                 <Column className="align-top w-1/2 pl-2">
-                  <Text className="m-0 text-sm font-bold text-[#111111] mb-2">Paid via:</Text>
-                  <Text className="m-0 text-sm text-gray-600">PayPal Express</Text>
+                  <Text className="m-0 text-sm font-bold text-[#111111] mb-2">Payment Method:</Text>
+                  <Text className="m-0 text-sm text-gray-600">{paymentMethod}</Text>
                 </Column>
               </Row>
             </Section>
 
             {/* G. THE VIP SUPPORT FOOTER */}
             <Section className="bg-[#111111] px-8 py-8 text-center">
+              <Text className="m-0 text-base font-bold italic text-white mb-6">
+                "Thank you for repping the culture. Wear it with pride."
+              </Text>
               <Button 
-                href={`https://ethohaiti.com/orders/${orderId}`}
-                className="bg-[#D32F2F] text-white font-bold text-base px-8 py-4 rounded mb-6 text-center block w-full"
+                href={`https://ethohaiti.com/orders/${orderId.replace('Order #', '')}`}
+                className="bg-white text-black font-bold text-base px-8 py-3 rounded mb-6 text-center block w-full"
               >
                 View Order Status
               </Button>
               <Text className="m-0 text-sm text-gray-400 mb-2">
-                Need to change your shipping address? You have a 12-hour window before production begins.
+                Need to change your shipping address? You have a 6-hour window before production begins.
               </Text>
-              <Link href="mailto:sakpase@ethohaiti.com" className="text-[#1E3A8A] font-bold text-sm underline">
-                Contact Support (sakpase@ethohaiti.com)
-              </Link>
+              <Text className="m-0 text-sm text-gray-400 mt-4">
+                Support: <Link href="mailto:sakpase@ethohaiti.com" className="text-white font-medium underline">sakpase@ethohaiti.com</Link>
+              </Text>
+              <Text className="m-0 text-sm text-gray-400 mt-1">
+                WhatsApp: <span className="text-white font-medium">849-506-7098</span>
+              </Text>
             </Section>
 
           </Container>

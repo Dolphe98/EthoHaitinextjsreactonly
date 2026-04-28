@@ -8,6 +8,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { createClient } from '@/lib/supabase';
 import { formatPrice } from '@/utils/formatPrice';
+import ReceiptTemplate from '@/components/orders/ReceiptTemplate'; // Added Import
 
 export default function OrderDetailsPage() {
   const { id } = useParams();
@@ -238,6 +239,33 @@ export default function OrderDetailsPage() {
     return 1; 
   };
   const currentStep = determineStep(order.status);
+
+  // --- ADDED RECEIPT DATA MAPPING HERE ---
+  const orderDataForReceipt = {
+    orderNumber: `Order #${order.id.substring(0, 8).toUpperCase()}`,
+    date: new Date(order.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+    paymentMethod: order.payment_method_title || order.payment_method || "Online Payment",
+    shippingAddress: {
+      name: isGuest ? "Customer (Guest)" : `${address.first_name || address.firstName || ''} ${address.last_name || address.lastName || ''}`.trim(),
+      street: isGuest ? "Address hidden for privacy" : address.address_1 || address.address1 || '',
+      city: address.city || '',
+      state: address.state || address.region || '',
+      zip: address.postcode || address.zip || ''
+    },
+    items: items.map(item => ({
+      title: item.name,
+      size: item.selectedSize || "N/A",
+      color: item.selectedColor || "N/A",
+      qty: item.quantity || 1,
+      price: Number(item.price) || 0,
+      image: item.image || item.images?.[0]?.src || "/logo-black.png"
+    })),
+    subtotal: Number(order.total) || 0, 
+    shipping: 0, // Hardcoded to 0 since UI shows 'FREE'
+    taxes: 0,    // Hardcoded to 0 since UI shows 'FREE'
+    grandTotal: Number(order.total) || 0
+  };
+  // ----------------------------------------
 
   return (
     <main className="pt-32 pb-20 min-h-screen bg-ethoBg relative">
@@ -494,6 +522,11 @@ export default function OrderDetailsPage() {
         </div>
 
       </div>
+
+      {/* --- ADDED RECEIPT COMPONENT HERE --- */}
+      <ReceiptTemplate orderData={orderDataForReceipt} />
+      {/* ------------------------------------ */}
+
     </main>
   );
 }
