@@ -77,7 +77,6 @@ export default function Footer() {
             <ul className="space-y-3 text-sm text-gray-300">
               <li><Link href="/account" className="hover:text-white transition-colors">Your Account</Link></li>
               <li><Link href="/orders" className="hover:text-white transition-colors">Track Your Order</Link></li>
-              <li><Link href="/returns" className="hover:text-white transition-colors">Returns & Policies</Link></li>
             </ul>
           </div>
 
@@ -89,9 +88,11 @@ export default function Footer() {
           <span>© {new Date().getFullYear()} EthoHaiti Enterprise. All rights reserved.</span>
           
           {/* THE NEW LEGAL LINKS */}
-          <div className="flex gap-4 font-bold">
+          <div className="flex flex-wrap justify-center gap-4 font-bold">
+            <Link href="/returns" className="hover:text-white transition-colors">Returns Policy</Link>
             <Link href="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>
             <Link href="/terms" className="hover:text-white transition-colors">Terms & Conditions</Link>
+            <Link href="/cookies" className="hover:text-white transition-colors">Cookie Policy</Link>
           </div>
 
         </div>
