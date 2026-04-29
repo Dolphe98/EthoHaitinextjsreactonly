@@ -3,6 +3,7 @@ import Script from "next/script"; // <-- IMPORT NEXT.JS SCRIPT
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import "./globals.css";
+import CookieBanner from '@/components/layout/CookieBanner';
 
 const inter = Inter({
   subsets: ["latin"],
@@ -35,6 +36,7 @@ export default function RootLayout({ children }) {
         </div>
         
         <Footer /> {/* 2. Place the Footer at the bottom */}
+        <CookieBanner />
       </body>
     </html>
   );
