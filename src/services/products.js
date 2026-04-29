@@ -118,7 +118,8 @@ function translateToWooCommerce(p) {
     short_description: rawDesc ? rawDesc.replace(/<[^>]*>?/gm, '').substring(0, 150) + "..." : "",
     price: lowestPrice,
     price_html: formattedPrice,
-    images: (p.images || []).map(img => ({ src: img.src })),
+    // MANAGER FIX: Keep the variant_ids so we can filter by color!
+    images: (p.images || []).map(img => ({ src: img.src, variant_ids: img.variant_ids || [] })),
     attributes: attributes,
     variations: variations,
     categories: categories,

@@ -17,11 +17,6 @@ export default function ProductInteractive({ product }) {
   const [activeImgIndex, setActiveImgIndex] = useState(0);
   const carouselRef = useRef(null);
   
-  // MANAGER FIX: Limit images to exactly 4 max. 
-  const images = product.images?.length > 0 
-    ? product.images.slice(0, 4) 
-    : [{ src: "https://placehold.co/800x800.png?text=No+Image" }];
-  
   // Cart & Feedback States
   const { cart, addToCart, overwriteCartItem } = useCartStore();
   const [addedToCart, setAddedToCart] = useState(false);
@@ -50,6 +45,26 @@ export default function ProductInteractive({ product }) {
 
   const [selectedColor, setSelectedColor] = useState(null);
   const [selectedSize, setSelectedSize] = useState(null);
+
+  // NEW: Dynamic Gallery Filter
+  const matchedVariationsForColor = product.variations?.filter(v => 
+    selectedColor ? v.attributes.some(attr => attr.name.toLowerCase().includes('color') && (attr.value === selectedColor || attr.option === selectedColor)) : true
+  ) || [];
+  
+  const matchedVariantIds = matchedVariationsForColor.map(v => v.id);
+
+  let displayImages = product.images?.filter(img => 
+    img.variant_ids && img.variant_ids.some(id => matchedVariantIds.includes(id))
+  ) || [];
+
+  // Fallback if no color is selected or variant_ids are missing
+  if (displayImages.length === 0) {
+    displayImages = product.images?.slice(0, 4) || [{ src: "https://placehold.co/800x800.png?text=No+Image" }];
+  } else {
+    displayImages = displayImages.slice(0, 4); // Always keep it to 4 images
+  }
+
+  const images = displayImages;
 
   // ==========================================
   // MANAGER FIX: Description Parsing & Slicing
@@ -85,7 +100,6 @@ export default function ProductInteractive({ product }) {
     if (isEditMode && !hasInitializedEdit) {
       if (itemToEdit.selectedColor) {
         setSelectedColor(itemToEdit.selectedColor);
-        updateImageToMatchColor(itemToEdit.selectedColor);
       }
       if (itemToEdit.selectedSize) {
         setSelectedSize(itemToEdit.selectedSize);
@@ -101,27 +115,15 @@ export default function ProductInteractive({ product }) {
     if (newIndex !== activeImgIndex) setActiveImgIndex(newIndex);
   };
 
-  const updateImageToMatchColor = (color) => {
-    const colorVariation = product.variations?.find(v => 
-      v.attributes.some(attr => attr.name.toLowerCase().includes('color') && (attr.value === color || attr.option === color)) && 
-      (v.image?.src || v.image)
-    );
-    if (colorVariation) {
-      const targetSrc = colorVariation.image?.src || colorVariation.image;
-      const targetIndex = images.findIndex(img => img.src === targetSrc);
-      if (targetIndex !== -1) {
-        setActiveImgIndex(targetIndex);
-        if (carouselRef.current) {
-          carouselRef.current.scrollTo({ left: targetIndex * carouselRef.current.offsetWidth, behavior: 'smooth' });
-        }
-      }
-    }
-  };
-
   const handleColorSelect = (color) => {
     setSelectedColor(color);
     setCartError(""); 
-    updateImageToMatchColor(color);
+    
+    // Reset gallery to the first angle of the new color
+    setActiveImgIndex(0);
+    if (carouselRef.current) {
+      carouselRef.current.scrollTo({ left: 0, behavior: 'smooth' });
+    }
   };
 
   const handleSizeSelect = (size) => {
