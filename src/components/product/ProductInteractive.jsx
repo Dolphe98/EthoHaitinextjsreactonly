@@ -40,6 +40,8 @@ export default function ProductInteractive({ product }) {
   const [descStep, setDescStep] = useState(1);
   const [accordionOpen, setAccordionOpen] = useState(true);
   const [sizeTableOpen, setSizeTableOpen] = useState(false);
+  const [featuresOpen, setFeaturesOpen] = useState(false); // NEW
+  const [careOpen, setCareOpen] = useState(false); // NEW
 
   const colorAttr = product.attributes?.find( a => a.name.toLowerCase() === 'color' || a.name.toLowerCase() === 'colors' );
   const sizeAttr = product.attributes?.find( a => a.name.toLowerCase() === 'size' || a.name.toLowerCase() === 'sizes' );
@@ -49,12 +51,35 @@ export default function ProductInteractive({ product }) {
   const [selectedColor, setSelectedColor] = useState(null);
   const [selectedSize, setSelectedSize] = useState(null);
 
-  // MANAGER FIX: Description & Table Parsing
-  const rawDesc = product.description || "No description available.";
+  // ==========================================
+  // MANAGER FIX: Description Parsing & Slicing
+  // ==========================================
+  let rawDesc = product.description || "No description available.";
+  
+  // 1. Extract Size Table
   const tableMatch = rawDesc.match(/<table[\s\S]*?<\/table>/i);
   const sizeTableHtml = tableMatch ? tableMatch[0] : null;
-  // Remove the table from the main description so it doesn't show twice
-  const mainDescriptionHtml = sizeTableHtml ? rawDesc.replace(/<table[\s\S]*?<\/table>/i, '') : rawDesc;
+  if (sizeTableHtml) rawDesc = rawDesc.replace(/<table[\s\S]*?<\/table>/i, '');
+
+  // 2. Extract "Care instructions"
+  let careHtml = null;
+  const careMatch = rawDesc.match(/(?:<p>)?Care instructions(?:<\/p>)?([\s\S]*?)(?=(?:<p>)?Product features|(?:<p>)?Categories:|$)/i);
+  if (careMatch) {
+    careHtml = careMatch[1].trim();
+    rawDesc = rawDesc.replace(/(?:<p>)?Care instructions(?:<\/p>)?[\s\S]*?(?=(?:<p>)?Product features|(?:<p>)?Categories:|$)/i, '');
+  }
+
+  // 3. Extract "Product features"
+  let featuresHtml = null;
+  const featuresMatch = rawDesc.match(/(?:<p>)?Product features(?:<\/p>)?([\s\S]*?)(?=(?:<p>)?Care instructions|(?:<p>)?Categories:|$)/i);
+  if (featuresMatch) {
+    featuresHtml = featuresMatch[1].trim();
+    rawDesc = rawDesc.replace(/(?:<p>)?Product features(?:<\/p>)?[\s\S]*?(?=(?:<p>)?Care instructions|(?:<p>)?Categories:|$)/i, '');
+  }
+
+  // What is left is the main description
+  const mainDescriptionHtml = rawDesc.trim();
+
 
   useEffect(() => {
     if (isEditMode && !hasInitializedEdit) {
@@ -213,7 +238,6 @@ export default function ProductInteractive({ product }) {
         
         {/* ========================================== */}
         {/* COL 1: GALLERY TRACK (STICKY, ~10%)        */}
-        {/* MANAGER FIX: Only show if > 1 image        */}
         {/* ========================================== */}
         {images.length > 1 ? (
           <div className="hidden lg:flex flex-col gap-3 lg:col-span-1 relative lg:sticky lg:top-[120px] self-start max-h-[calc(100vh-140px)] overflow-y-auto no-scrollbar pb-4">
@@ -231,7 +255,7 @@ export default function ProductInteractive({ product }) {
             ))}
           </div>
         ) : (
-          <div className="hidden lg:block lg:col-span-1"></div> /* Spacer if no images */
+          <div className="hidden lg:block lg:col-span-1"></div>
         )}
 
         {/* ========================================== */}
@@ -243,7 +267,7 @@ export default function ProductInteractive({ product }) {
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" /></svg>
           </button>
 
-          {/* DESKTOP CAROUSEL (Hidden on Mobile) */}
+          {/* DESKTOP CAROUSEL */}
           <div 
             ref={carouselRef}
             onScroll={handleScroll}
@@ -263,7 +287,7 @@ export default function ProductInteractive({ product }) {
             ))}
           </div>
 
-          {/* MOBILE MAIN IMAGE (Hidden on Desktop) */}
+          {/* MOBILE MAIN IMAGE */}
           <div className="flex lg:hidden rounded-2xl bg-gray-50 border border-gray-200 aspect-square relative items-center justify-center p-2">
              <Image 
                src={images[activeImgIndex]?.src || images[0]?.src}
@@ -275,7 +299,7 @@ export default function ProductInteractive({ product }) {
              />
           </div>
 
-          {/* MOBILE THUMBNAILS (Replaces the dots) */}
+          {/* MOBILE THUMBNAILS */}
           {images.length > 1 && (
             <div className="flex lg:hidden gap-3 mt-4 overflow-x-auto no-scrollbar pb-2">
               {images.map((img, index) => (
@@ -373,7 +397,79 @@ export default function ProductInteractive({ product }) {
 
           <div className="mt-8">
             
-            {/* MANAGER FIX: Extracted Size Table Accordion */}
+            {/* MAIN DESCRIPTION ACCORDION */}
+            {mainDescriptionHtml && (
+              <div className="border-t border-gray-200">
+                <button 
+                  onClick={() => setAccordionOpen(!accordionOpen)} 
+                  className="w-full py-5 flex justify-between items-center text-left focus:outline-none group"
+                >
+                  <span className="text-lg font-extrabold text-ethoDark group-hover:text-haitiBlue transition-colors">Product Details</span>
+                  <svg className={`w-5 h-5 text-gray-500 transition-transform duration-300 ${accordionOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                </button>
+                
+                <div className={`overflow-hidden transition-all duration-300 ease-in-out ${accordionOpen ? 'max-h-[1000px] opacity-100 pb-6' : 'max-h-0 opacity-0'}`}>
+                   <div className={`prose prose-sm text-gray-600 leading-relaxed relative max-w-none ${descStep === 1 ? 'line-clamp-3 lg:line-clamp-none overflow-hidden' : descStep === 2 ? 'line-clamp-6 lg:line-clamp-none overflow-hidden' : ''}`}>
+                      <div dangerouslySetInnerHTML={{ __html: mainDescriptionHtml }}></div>
+                      
+                      {descStep < 3 && (
+                        <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-ethoBg to-transparent lg:hidden pointer-events-none"></div>
+                      )}
+                   </div>
+                   
+                   <button 
+                     onClick={handleDescToggle}
+                     className="mt-3 text-haitiBlue font-bold text-sm lg:hidden hover:underline"
+                   >
+                     {descStep === 1 ? "+ Show more" : descStep === 2 ? "+ Show more" : "- Show less"}
+                   </button>
+                </div>
+              </div>
+            )}
+
+            {/* PRODUCT FEATURES ACCORDION */}
+            {featuresHtml && (
+              <div className="border-t border-gray-200">
+                <button 
+                  onClick={() => setFeaturesOpen(!featuresOpen)} 
+                  className="w-full py-5 flex justify-between items-center text-left focus:outline-none group"
+                >
+                  <span className="text-lg font-extrabold text-ethoDark group-hover:text-haitiBlue transition-colors flex items-center gap-2">
+                    <svg className="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 0 1 1.04 0l2.125 5.111a.563.563 0 0 0 .475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 0 0-.182.557l1.285 5.385a.562.562 0 0 1-.84.61l-4.725-2.885a.562.562 0 0 0-.586 0L6.982 20.54a.562.562 0 0 1-.84-.61l1.285-5.386a.562.562 0 0 0-.182-.557l-4.204-3.602a.562.562 0 0 1 .321-.988l5.518-.442a.563.563 0 0 0 .475-.345L11.48 3.5Z" /></svg>
+                    Features
+                  </span>
+                  <svg className={`w-5 h-5 text-gray-500 transition-transform duration-300 ${featuresOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                </button>
+                <div className={`overflow-hidden transition-all duration-300 ease-in-out ${featuresOpen ? 'max-h-[1000px] opacity-100 pb-6' : 'max-h-0 opacity-0'}`}>
+                   <div className="prose prose-sm text-gray-600 max-w-none">
+                     <div dangerouslySetInnerHTML={{ __html: featuresHtml }}></div>
+                   </div>
+                </div>
+              </div>
+            )}
+
+            {/* CARE INSTRUCTIONS ACCORDION */}
+            {careHtml && (
+              <div className="border-t border-gray-200">
+                <button 
+                  onClick={() => setCareOpen(!careOpen)} 
+                  className="w-full py-5 flex justify-between items-center text-left focus:outline-none group"
+                >
+                  <span className="text-lg font-extrabold text-ethoDark group-hover:text-haitiBlue transition-colors flex items-center gap-2">
+                    <svg className="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2.25m0 0v2.25m0-2.25h2.25m-2.25 0H9.75m2.25 0H12m0 0v-2.25m0 2.25v2.25m0-2.25H9.75m2.25 0h2.25M12 18v.75m0-1.5v.75m0-1.5v.75m0-1.5v.75m0-1.5v.75m0-1.5v.75m0-1.5v.75" /></svg>
+                    Care Instructions
+                  </span>
+                  <svg className={`w-5 h-5 text-gray-500 transition-transform duration-300 ${careOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                </button>
+                <div className={`overflow-hidden transition-all duration-300 ease-in-out ${careOpen ? 'max-h-[1000px] opacity-100 pb-6' : 'max-h-0 opacity-0'}`}>
+                   <div className="prose prose-sm text-gray-600 max-w-none">
+                     <div dangerouslySetInnerHTML={{ __html: careHtml }}></div>
+                   </div>
+                </div>
+              </div>
+            )}
+
+            {/* SIZE GUIDE ACCORDION */}
             {sizeTableHtml && (
               <div className="border-t border-gray-200">
                 <button 
@@ -394,34 +490,6 @@ export default function ProductInteractive({ product }) {
                 </div>
               </div>
             )}
-
-            {/* Main Product Description Accordion */}
-            <div className="border-t border-gray-200">
-              <button 
-                onClick={() => setAccordionOpen(!accordionOpen)} 
-                className="w-full py-5 flex justify-between items-center text-left focus:outline-none group"
-              >
-                <span className="text-lg font-extrabold text-ethoDark group-hover:text-haitiBlue transition-colors">Product Details</span>
-                <svg className={`w-5 h-5 text-gray-500 transition-transform duration-300 ${accordionOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
-              </button>
-              
-              <div className={`overflow-hidden transition-all duration-300 ease-in-out ${accordionOpen ? 'max-h-[1000px] opacity-100 pb-6' : 'max-h-0 opacity-0'}`}>
-                 <div className={`prose prose-sm text-gray-600 leading-relaxed relative max-w-none ${descStep === 1 ? 'line-clamp-3 lg:line-clamp-none overflow-hidden' : descStep === 2 ? 'line-clamp-6 lg:line-clamp-none overflow-hidden' : ''}`}>
-                    <div dangerouslySetInnerHTML={{ __html: mainDescriptionHtml }}></div>
-                    
-                    {descStep < 3 && (
-                      <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-ethoBg to-transparent lg:hidden pointer-events-none"></div>
-                    )}
-                 </div>
-                 
-                 <button 
-                   onClick={handleDescToggle}
-                   className="mt-3 text-haitiBlue font-bold text-sm lg:hidden hover:underline"
-                 >
-                   {descStep === 1 ? "+ Show more" : descStep === 2 ? "+ Show more" : "- Show less"}
-                 </button>
-              </div>
-            </div>
 
           </div>
         </div>
