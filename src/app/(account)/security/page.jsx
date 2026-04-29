@@ -5,6 +5,7 @@ import { useAuthStore } from '@/store/authStore';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
+import { formatPhoneNumber } from '@/utils/formatPhone';
 
 export default function SecurityPage() {
   const { token, user } = useAuthStore();
@@ -242,11 +243,11 @@ export default function SecurityPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-bold text-gray-700 mb-2">Phone Number <span className="text-haitiRed">*</span></label>
-                  <input type="tel" required placeholder="For shipping updates" value={profile.phone} onChange={(e) => setProfile({...profile, phone: e.target.value})} className="w-full px-4 py-3 border border-gray-300 rounded focus:ring-2 focus:ring-haitiBlue focus:outline-none text-black" />
+                  <input type="tel" required placeholder="For shipping updates" value={profile.phone} onChange={(e) => setProfile({...profile, phone: formatPhoneNumber(e.target.value)})} className="w-full px-4 py-3 border border-gray-300 rounded focus:ring-2 focus:ring-haitiBlue focus:outline-none text-black" />
                 </div>
                 <div>
                   <label className="block text-sm font-bold text-gray-700 mb-2 flex justify-between">WhatsApp Number <span className="text-xs font-normal text-gray-400">Highly Recommended</span></label>
-                  <input type="tel" placeholder="For instant customer support" value={profile.whatsapp} onChange={(e) => setProfile({...profile, whatsapp: e.target.value})} className="w-full px-4 py-3 border border-gray-300 rounded focus:ring-2 focus:ring-haitiBlue focus:outline-none text-black" />
+                  <input type="tel" placeholder="For instant customer support" value={profile.whatsapp} onChange={(e) => setProfile({...profile, whatsapp: formatPhoneNumber(e.target.value)})} className="w-full px-4 py-3 border border-gray-300 rounded focus:ring-2 focus:ring-haitiBlue focus:outline-none text-black" />
                 </div>
               </div>
               <div className="flex justify-end">
