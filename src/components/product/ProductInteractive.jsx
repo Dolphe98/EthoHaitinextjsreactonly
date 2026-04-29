@@ -388,7 +388,7 @@ export default function ProductInteractive({ product }) {
                 </button>
                 <div className={`overflow-hidden transition-all duration-300 ease-in-out ${sizeTableOpen ? 'max-h-[1500px] opacity-100 pb-6' : 'max-h-0 opacity-0'}`}>
                    <div 
-                     className="prose prose-sm text-gray-600 max-w-none overflow-x-auto [&_table]:min-w-full [&_table]:border-collapse [&_th]:bg-gray-100 [&_th]:border [&_th]:border-gray-200 [&_th]:p-2 [&_td]:border [&_td]:border-gray-200 [&_td]:p-2"
+                     className="prose prose-sm text-gray-600 max-w-none overflow-x-auto [&_table]:min-w-full [&_table]:border-collapse [&_th]:bg-gray-100 [&_th]:border [&_th]:border-gray-200 [&_th]:p-3 [&_th]:font-bold [&_th]:text-left [&_th]:whitespace-nowrap [&_td]:border [&_td]:border-gray-200 [&_td]:p-3 [&_td]:whitespace-nowrap [&_td]:text-center"
                      dangerouslySetInnerHTML={{ __html: sizeTableHtml }}
                    ></div>
                 </div>
