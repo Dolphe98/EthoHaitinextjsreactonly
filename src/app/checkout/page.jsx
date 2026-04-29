@@ -397,7 +397,7 @@ export default function CheckoutPage() {
                     <button onClick={removePromoCode} className="text-sm font-bold text-haitiRed hover:text-red-700 hover:underline">Remove</button>
                   </div>
                 ) : (
-                  <div className="flex gap-2">
+                  <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
                     <input
                       type="text"
                       placeholder="Ambassador / Promo Code"
@@ -407,7 +407,7 @@ export default function CheckoutPage() {
                     />
                     <button
                       onClick={() => { if (promoInput.trim()) applyPromoCode(promoInput.trim()); }}
-                      className="bg-ethoDark hover:bg-black text-white font-extrabold py-3 px-6 rounded transition-colors text-sm shadow-sm"
+                      className="w-full sm:w-auto bg-ethoDark hover:bg-black text-white font-extrabold py-3 px-6 rounded transition-colors text-sm shadow-sm"
                     >
                       Apply
                     </button>
