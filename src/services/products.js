@@ -47,11 +47,26 @@ function translateToWooCommerce(p) {
 
   const formattedPrice = `$${lowestPrice.toFixed(2)}`;
 
-  const attributes = (p.options || []).map(opt => ({
-    name: opt.name,
-    options: (opt.values || []).map(val => val.title),
-    terms: (opt.values || []).map(val => ({ name: val.title }))
-  }));
+  // 1. Gather every option ID that is ACTUALLY used by an active variant
+  const activeOptionIds = new Set();
+  activeVariants.forEach(variant => {
+    (variant.options || []).forEach(optId => activeOptionIds.add(optId));
+  });
+
+  // 2. Filter the massive Printify blueprint list against our active options
+  const attributes = (p.options || [])
+    .map(opt => {
+      // Keep only the values (colors/sizes) that exist in our Set
+      const validValues = (opt.values || []).filter(val => activeOptionIds.has(val.id));
+
+      return {
+        name: opt.name,
+        options: validValues.map(val => val.title),
+        terms: validValues.map(val => ({ name: val.title }))
+      };
+    })
+    // 3. Clean up: Remove the attribute entirely if no active values exist
+    .filter(attr => attr.options.length > 0);
 
   const variations = activeVariants.map(variant => {
     const varAttributes = (variant.options || []).map(optId => {
