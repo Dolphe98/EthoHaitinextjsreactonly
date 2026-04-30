@@ -28,7 +28,7 @@ export default function GiftCardsComingSoon() {
           EthoHaiti Gift Cards
         </h1>
         <p className="text-xl text-haitiRed font-bold mb-6">
-          Coming Soon to Phase 3
+          Coming Soon
         </p>
         <p className="text-gray-500 mb-10 leading-relaxed">
           The perfect way to share Haitian culture. We’re working on a digital gift card system that will allow you to send instant, personalized gear to your friends and family.

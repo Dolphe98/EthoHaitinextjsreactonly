@@ -413,8 +413,11 @@ setIsCatMenuOpen(false); }}
          
                             key={sub.id}
                             className="px-4 py-2 text-sm cursor-pointer hover:bg-haitiBlue hover:text-white text-black transition-colors"
-                            onClick={() => { setSearchCategory(sub.slug); setIsCatMenuOpen(false); }}
-             
+                            onClick={() => { 
+                              setSearchCategory(sub.slug); 
+                              setIsCatMenuOpen(false); 
+                              router.push(`/category/${sub.slug}`); // <-- This makes it auto-navigate instantly!
+                            }}
                           >
                             {sub.name}
                           </div>
@@ -579,7 +582,11 @@ setIsCatMenuOpen(false); }}
                          
                           key={sub.id}
                           className="px-4 py-2 text-sm cursor-pointer hover:bg-haitiBlue hover:text-white text-black transition-colors"
-                          onClick={() => { setSearchCategory(sub.slug); setIsCatMenuOpen(false); }}
+                          onClick={() => { 
+                            setSearchCategory(sub.slug); 
+                            setIsCatMenuOpen(false); 
+                            router.push(`/category/${sub.slug}`); // <-- This makes it auto-navigate instantly!
+                          }}
                         >
            
                           {sub.name}

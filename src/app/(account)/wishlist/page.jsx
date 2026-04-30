@@ -26,7 +26,7 @@ export default function WishlistComingSoon() {
           Favorites & Wishlists
         </h1>
         <p className="text-xl text-haitiBlue font-bold mb-6">
-          Coming Soon to Phase 3
+          Coming Soon
         </p>
         <p className="text-gray-500 mb-10 leading-relaxed">
           We're building a way for you to save your favorite EthoHaiti designs and share them with the world. Stay tuned!
