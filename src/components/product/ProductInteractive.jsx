@@ -15,6 +15,7 @@ export default function ProductInteractive({ product }) {
   
   // Gallery States
   const [activeImgIndex, setActiveImgIndex] = useState(0);
+  const [isZoomed, setIsZoomed] = useState(false); // MANAGER FIX: Track tap-to-zoom state
   const carouselRef = useRef(null);
   
   // Cart & Feedback States
@@ -276,13 +277,17 @@ export default function ProductInteractive({ product }) {
             className="hidden lg:flex overflow-x-auto snap-x snap-mandatory rounded-2xl bg-gray-50 border border-gray-200 aspect-square [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']"
           >
             {images.map((img, index) => (
-              <div key={index} className="min-w-full h-full snap-center relative flex items-center justify-center p-2">
+              <div 
+                key={index} 
+                className="min-w-full h-full snap-center relative flex items-center justify-center p-2 overflow-hidden group cursor-zoom-in"
+                onClick={() => setIsZoomed(!isZoomed)}
+              >
                 <Image 
                   src={img.src} 
                   alt={`${cleanName} main ${index + 1}`} 
                   fill
                   sizes="(max-width: 1024px) 100vw, 40vw"
-                  className="object-contain pointer-events-none mix-blend-multiply"
+                  className={`object-contain pointer-events-none mix-blend-multiply transition-transform duration-500 ease-out group-hover:scale-[1.75] ${isZoomed ? 'scale-[1.75]' : 'scale-100'}`}
                   priority={index === 0}
                 />
               </div>
@@ -290,13 +295,16 @@ export default function ProductInteractive({ product }) {
           </div>
 
           {/* MOBILE MAIN IMAGE */}
-          <div className="flex lg:hidden rounded-2xl bg-gray-50 border border-gray-200 aspect-square relative items-center justify-center p-2">
+          <div 
+            className="flex lg:hidden rounded-2xl bg-gray-50 border border-gray-200 aspect-square relative items-center justify-center p-2 overflow-hidden cursor-zoom-in"
+            onClick={() => setIsZoomed(!isZoomed)}
+          >
              <Image 
                src={images[activeImgIndex]?.src || images[0]?.src}
                alt={`${cleanName} main`} 
                fill
                sizes="100vw"
-               className="object-contain mix-blend-multiply"
+               className={`object-contain mix-blend-multiply pointer-events-none transition-transform duration-300 ease-out ${isZoomed ? 'scale-[1.75]' : 'scale-100'}`}
                priority
              />
           </div>
