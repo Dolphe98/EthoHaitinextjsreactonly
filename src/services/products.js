@@ -40,7 +40,7 @@ function decodeHtml(html) {
 }
 
 function translateToWooCommerce(p) {
-  const activeVariants = p.variants || [];
+  const activeVariants = (p.variants || []).filter(variant => variant.is_enabled);
   const lowestPrice = activeVariants.length > 0 
     ? Math.min(...activeVariants.map(v => v.price)) / 100 
     : 0;
