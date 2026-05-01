@@ -166,10 +166,20 @@ export default function CheckoutPage() {
 
     const details = await res.json();
     if (details.status === "COMPLETED") {
+      
+      // MANAGER FIX: Apply 40% margin rule for Affiliates
       if (typeof window !== 'undefined' && window.goaffproTrackConversion) {
-        window.goaffproTrackConversion({ id: data.orderID, total: total });
-        window.goaffproTrackConversion({ id: data.orderID, total: total, coupon_code: promoCode });
+        // Calculate 40% of the total and lock it to 2 decimal places
+        const profitMarginTotal = Number((total * 0.40).toFixed(2));
+        
+        // Send the modified total to GoAffPro (only send once!)
+        if (promoCode) {
+          window.goaffproTrackConversion({ id: data.orderID, total: profitMarginTotal, coupon_code: promoCode });
+        } else {
+          window.goaffproTrackConversion({ id: data.orderID, total: profitMarginTotal });
+        }
       }
+      
       setPaymentSuccess(data.orderID);
       clearCart();
       setTimeout(() => {
