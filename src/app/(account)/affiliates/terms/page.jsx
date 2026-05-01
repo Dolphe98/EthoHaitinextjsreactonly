@@ -98,11 +98,27 @@ export default function AffiliateTermsPage() {
             <div>
               <h2 className="text-2xl md:text-3xl font-black text-ethoDark mb-4 mt-12">4. COMMISSION STRUCTURE AND PAYMENT TERMS</h2>
               <h3 className="text-xl md:text-2xl font-bold text-ethoDark mb-3">4.1 Commission Rates and Structure</h3>
-              <p>Affiliates will receive a commission equal to 15% of the net sale amount for each qualifying conversion. The commission percentage applies to the actual purchase price paid by the customer, excluding taxes, shipping fees, and any discounts or refunds.</p>
+              <p>Affiliates will earn a commission equal to 15% of the standard profit margin for each qualifying conversion. For the purposes of this Agreement, the standard profit margin is defined as 40% of the net sale amount. The net sale amount applies strictly to the actual purchase price paid by the customer, expressly excluding taxes, shipping fees, and any applied discounts or refunds.</p>
+              <p className="mt-4 italic text-gray-500">(Example: On a $100 net sale, the 40% profit margin is $40. The affiliate earns 15% of that $40 margin, resulting in a $6 commission).</p>
               
               <h3 className="text-xl md:text-2xl font-bold text-ethoDark mb-3 mt-8">4.2 Payment Schedule and Methods</h3>
-              <p>Commission payments are processed on a monthly basis. Payments will be made approximately 30 days after the end of each payment period.</p>
-              <p className="mt-4"><strong>Minimum Payout Threshold:</strong> You must accumulate at least USD 20 in eligible commissions before a payment will be issued. If your balance is below this threshold, your earnings will roll over to the next period.</p>
+              <p>Commissions are processed twice a month on a strict Net-30 schedule. To account for potential customer returns and order processing times, all earned commissions are held for a 30-day clearing period following the close of their respective earning cycle before being disbursed.</p>
+              
+              <ul className="list-disc pl-8 space-y-4 mt-4">
+                <li><strong>Cycle 1 (1st &ndash; 15th):</strong> Commissions earned between the 1st and the 15th of the month are paid out on the 15th of the following month.</li>
+                <li><strong>Cycle 2 (16th &ndash; End of Month):</strong> Commissions earned between the 16th and the last day of the month are paid out on the 1st of the second following month.</li>
+              </ul>
+
+              <p className="mt-6"><strong>How this works in practice:</strong></p>
+              <p className="mt-2">The first time you earn a commission, it will take approximately 30 to 45 days to receive your first payout as the initial cycle clears. However, once that first period passes, you will receive reliable payouts every 15 days for your continuous sales.</p>
+
+              <p className="mt-6 font-bold text-ethoDark">Examples:</p>
+              <ul className="list-disc pl-8 space-y-4 mt-2">
+                <li><strong>Example A (Cycle 1):</strong> If you refer a successful sale on May 5th, that commission is part of Cycle 1 (May 1-15). The 30-day clearing period passes, and you receive your payout on June 15th.</li>
+                <li><strong>Example B (Cycle 2):</strong> If you refer a successful sale on May 20th, that commission is part of Cycle 2 (May 16-31). The 30-day clearing period passes, and you receive your payout on July 1st.</li>
+              </ul>
+
+              <p className="mt-8"><strong>Minimum Payout Threshold:</strong> You must accumulate at least USD 20 in eligible commissions before a payment will be issued. If your balance is below this threshold, your earnings will roll over to the next period.</p>
               <p className="mt-4"><strong>Available Payment Methods:</strong> Payments are issued via PayPal in USD and other.</p>
               
               <h3 className="text-xl md:text-2xl font-bold text-ethoDark mb-3 mt-8">4.3 Commission Validation and Holding Period</h3>
