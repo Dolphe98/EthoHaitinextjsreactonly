@@ -18,7 +18,7 @@ export default function HeroBanner() {
     {
       id: 0,
       tag: "Welcome To EthoHaiti",
-      title: "Wear the Culture With Pride.",
+      title: "Wear the Culture With Pride",
       desc: "We’re more than just a brand. We represent the strong, unbreakable spirit of Haiti.",
       cta: "Explore the Brand",
       action: "scroll",
@@ -27,7 +27,7 @@ export default function HeroBanner() {
     {
       id: 1,
       tag: "Join us",
-      title: "Byenveni Nan Fanmi An.",
+      title: "Byenveni Nan Fanmi An",
       desc: "Sign up for free today. Save your favorite gear, track your orders, and become part of the EthoHaiti family.",
       cta: "Join the Family",
       link: "/account",
@@ -37,7 +37,7 @@ export default function HeroBanner() {
     {
       id: 2,
       tag: "Premium Collection",
-      title: "Speak Without Saying a Word.",
+      title: "Speak Without Saying a Word",
       desc: "Find bold designs, top quality, and ancestral proverbs. Explore streetwear that shares our story with the world.",
       cta: "Shop Now",
       action: "scroll",

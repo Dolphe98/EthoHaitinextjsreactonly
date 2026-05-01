@@ -66,8 +66,8 @@ export default function Footer() {
           <div>
             <h3 className="text-lg font-extrabold mb-4 border-l-4 border-haitiRed pl-2">Get to Know Us</h3>
             <ul className="space-y-3 text-sm text-gray-300">
-              <li><Link href="/about" className="hover:text-white transition-colors">Our Story</Link></li>
-              <li><Link href="/mission" className="hover:text-white transition-colors">The Culture & Mission</Link></li>
+              <li><Link href="/coming-soon" className="hover:text-white transition-colors">Our Story</Link></li>
+              <li><Link href="/culture-mission" className="hover:text-white transition-colors">The Culture & Mission</Link></li>
             </ul>
           </div>
 
