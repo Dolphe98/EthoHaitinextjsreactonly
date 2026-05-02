@@ -40,6 +40,13 @@ export default function ReceiptTemplate({ orderData }) {
         </div>
       </div>
 
+      {/* ========================================== */}
+      {/* 2.5 The POD Expectation Setter (NEW)       */}
+      {/* ========================================== */}
+      <div className="mb-6 p-3 bg-gray-50 border border-gray-200 text-xs break-inside-avoid text-black">
+        <strong>⏱️ Note:</strong> EthoHaiti gear is custom-made to order. Please allow <strong>5-10 business days</strong> for production before your items ship. If you ordered multiple items, they may arrive in separate packages.
+      </div>
+
       {/* 3. The Line Items (The Product Table) */}
       <table className="w-full text-left mb-6 border-collapse">
         <thead>

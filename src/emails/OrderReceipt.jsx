@@ -81,7 +81,7 @@ export default function OrderReceipt({
             <Section className="px-8 pb-6">
               <Section className="bg-blue-50 rounded-lg p-4 border border-blue-100">
                 <Text className="m-0 text-sm text-blue-900 leading-relaxed">
-                  <strong>⏱️ Note:</strong> EthoHaiti gear is custom-made to order. Please allow <strong>2-5 business days</strong> for production before your items ship. If you ordered multiple items, they may arrive in separate packages so we can get them to you faster.
+                  <strong>⏱️ Note:</strong> EthoHaiti gear is custom-made to order. Please allow <strong>5-10 business days</strong> for production before your items ship. If you ordered multiple items, they may arrive in separate packages so we can get them to you faster.
                 </Text>
               </Section>
             </Section>
