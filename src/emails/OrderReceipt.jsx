@@ -131,7 +131,16 @@ export default function OrderReceipt({
                   {Number(discount) > 0 && (
                     <Text className="m-0 text-sm text-green-600 font-bold mb-2">Discount: -${discount}</Text>
                   )}
-                  <Text className="m-0 text-sm text-gray-600 mb-2">Shipping (Printify Standard): {shipping === "0.00" ? "FREE" : `$${shipping}`}</Text>
+                  {/* MANAGER FIX: DYNAMIC SHIPPING LINE */}
+                  <div className="m-0 mb-2 text-right">
+                    <span className="text-sm text-gray-600 align-top inline-block mr-2">
+                      Shipping (Printify Standard):
+                    </span>
+                    <span className="inline-block text-right align-top">
+                      <span className="block text-sm font-bold text-[#111111] uppercase leading-tight">Free</span>
+                      <span className="block text-[10px] text-gray-500 italic leading-none mt-0.5">Paid by us</span>
+                    </span>
+                  </div>
                   <Text className="m-0 text-sm text-gray-600 mb-4 pb-4 border-b border-gray-200">Taxes: ${taxes}</Text>
                   <Text className="m-0 text-2xl font-extrabold text-[#111111]">Grand Total: ${total}</Text>
                 </Column>
