@@ -42,7 +42,6 @@ export default function OrderReceipt({
             
             {/* A. THE HEADER (Brand Authority) */}
             <Section className="text-center py-6">
-              {/* THE FIX: Absolute URL pointing to your live domain so email clients can see it */}
               <Img 
                 src="https://www.ethohaiti.com/logoethohaiticom1.png" 
                 width="150" 
@@ -131,16 +130,15 @@ export default function OrderReceipt({
                   {Number(discount) > 0 && (
                     <Text className="m-0 text-sm text-green-600 font-bold mb-2">Discount: -${discount}</Text>
                   )}
+                  
                   {/* MANAGER FIX: DYNAMIC SHIPPING LINE */}
                   <div className="m-0 mb-2 text-right">
-                    <span className="text-sm text-gray-600 align-top inline-block mr-2">
-                      Shipping (Printify Standard):
+                    <span className="text-sm text-gray-600 inline-block mr-2">
+                      Shipping <span className="text-[11px] text-gray-400 italic">(paid by us)</span>:
                     </span>
-                    <span className="inline-block text-right align-top">
-                      <span className="block text-sm font-bold text-[#111111] uppercase leading-tight">Free</span>
-                      <span className="block text-[10px] text-gray-500 italic leading-none mt-0.5">Paid by us</span>
-                    </span>
+                    <span className="text-sm font-bold text-[#111111] uppercase inline-block">Free</span>
                   </div>
+
                   <Text className="m-0 text-sm text-gray-600 mb-4 pb-4 border-b border-gray-200">Taxes: ${taxes}</Text>
                   <Text className="m-0 text-2xl font-extrabold text-[#111111]">Grand Total: ${total}</Text>
                 </Column>
@@ -173,7 +171,6 @@ export default function OrderReceipt({
 
             {/* G. THE VIP SUPPORT FOOTER */}
             <Section className="bg-[#111111] px-8 py-8 text-center">
-              {/* THE FIX: Updated quote text to match exactly what you wanted */}
               <Text className="m-0 text-base font-bold italic text-white mb-6">
                 "Thank you for representing the culture. Wear it with pride."
               </Text>

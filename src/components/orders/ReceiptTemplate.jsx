@@ -96,13 +96,14 @@ export default function ReceiptTemplate({ orderData }) {
             </div>
           )}
 
-          <div className="flex justify-between py-1">
-            <span>Shipping (Printify Standard):</span>
-            <div className="text-right">
-              <span className="block font-bold text-black uppercase">Free</span>
-              <span className="block text-[10px] text-gray-500 italic leading-none mt-0.5">Paid by us</span>
-            </div>
+          {/* MANAGER FIX: DYNAMIC SHIPPING LINE */}
+          <div className="flex justify-between py-1 items-center">
+            <span>
+              Shipping <span className="text-[10px] text-gray-500 italic ml-0.5">(paid by us)</span>:
+            </span>
+            <span className="font-bold text-black uppercase">Free</span>
           </div>
+          
           <div className="flex justify-between py-1 border-b border-gray-300 pb-2 mb-2">
             <span>Taxes:</span>
             <span className="font-bold text-black">We pay it for you</span>
