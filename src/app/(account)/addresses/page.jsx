@@ -29,6 +29,8 @@ export default function AddressesPage() {
     id: '', fullName: '', email: '', phone: '', address_1: '', address_2: '', city: '', state: '', postcode: '', country: 'US', delivery_instructions: ''
   });
   
+  const [baseProfile, setBaseProfile] = useState(null);
+
   const supabase = createClient();
 
   // 1. Fetch User Data
@@ -49,6 +51,13 @@ export default function AddressesPage() {
         if (error && error.code !== 'PGRST116') throw error;
 
         if (data) {
+          setBaseProfile({
+            firstName: data.first_name || '',
+            lastName: data.last_name || '',
+            phone: data.phone || data.whatssap || '',
+            email: data.email || user.email || ''
+          });
+
           // If they have an address_book JSON array, load it
           if (data.address_book && Array.isArray(data.address_book) && data.address_book.length > 0) {
             setAddresses(data.address_book);
@@ -109,24 +118,19 @@ export default function AddressesPage() {
 
       // Save to Supabase (JSON Array AND updating legacy flat fields with the default/latest address)
       const defaultAddress = updatedAddresses[0];
-      const defaultNameParts = defaultAddress.fullName.trim().split(' ');
 
       const { error: supabaseError } = await supabase
         .from('profiles')
-        .upsert({
-          id: user.id, 
-          address_book: updatedAddresses, // The new array column
-          // The legacy flat fields so checkout doesn't break
-          first_name: defaultNameParts[0] || '',
-          last_name: defaultNameParts.slice(1).join(' ') || '',
-          phone: defaultAddress.phone,
+        .update({
+          address_book: updatedAddresses,
           address_1: defaultAddress.address_1,
           address_2: defaultAddress.address_2,
           city: defaultAddress.city,
           state: defaultAddress.state,
           postcode: defaultAddress.postcode,
           country: defaultAddress.country
-        }, { onConflict: 'id' });
+        })
+        .eq('id', user.id);
 
       if (supabaseError) throw new Error('Database failed to save the address.');
       
@@ -165,7 +169,19 @@ export default function AddressesPage() {
   };
 
   const openNewForm = () => {
-    setCurrentForm({ id: '', fullName: '', email: '', phone: '', address_1: '', address_2: '', city: '', state: '', postcode: '', country: 'US', delivery_instructions: '' });
+    setCurrentForm({ 
+      id: '', 
+      fullName: baseProfile ? `${baseProfile.firstName} ${baseProfile.lastName}`.trim() : '', 
+      email: baseProfile?.email || '', 
+      phone: baseProfile?.phone || '', 
+      address_1: '', 
+      address_2: '', 
+      city: '', 
+      state: '', 
+      postcode: '', 
+      country: 'US', 
+      delivery_instructions: '' 
+    });
     setEditingId(null);
     setIsEditing(true);
   };
