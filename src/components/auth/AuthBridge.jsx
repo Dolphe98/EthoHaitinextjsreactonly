@@ -43,6 +43,8 @@ export default function AuthBridge() {
         provider: 'google',
         options: {
           redirectTo: `${window.location.origin}/account`,
+          // FORCE CONSENT SCREEN ONLY ON SIGN UP
+          queryParams: !isLogin ? { prompt: 'consent' } : undefined,
         }
       });
       if (error) throw error;
