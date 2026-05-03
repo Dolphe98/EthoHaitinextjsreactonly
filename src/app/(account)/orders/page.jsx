@@ -282,7 +282,7 @@ export default function OrdersPage() {
            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
              <h3 className="text-xl font-extrabold text-ethoDark mb-2">No Orders Yet</h3>
              <p className="text-gray-500 mb-6">You haven't placed any orders with us yet.</p>
-             <Link href="/category/collection" className="bg-haitiBlue hover:bg-blue-800 text-white font-extrabold py-3 px-8 rounded transition-colors shadow-md inline-block">
+             <Link href="/" className="bg-haitiBlue hover:bg-blue-800 text-white font-extrabold py-3 px-8 rounded transition-colors shadow-md inline-block">
                Start Shopping
              </Link>
            </div>
