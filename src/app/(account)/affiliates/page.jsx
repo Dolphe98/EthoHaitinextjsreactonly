@@ -108,7 +108,7 @@ export default function AffiliatesPage() {
   // High-Fidelity Skeleton Loader
   if (!mounted || !token || isChecking) {
     return (
-      <main className="pt-32 pb-20 min-h-screen bg-ethoBg">
+      <main className="pt-6 lg:pt-12 pb-20 min-h-screen bg-ethoBg">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 animate-pulse">
           <div className="h-4 bg-gray-200 rounded w-48 mb-8"></div>
           <div className="h-12 bg-gray-200 rounded w-3/4 mb-4"></div>
@@ -215,7 +215,7 @@ export default function AffiliatesPage() {
         </div>
       )}
 
-      <main className="pt-32 pb-20 min-h-screen bg-ethoBg">
+      <main className="pt-6 lg:pt-12 pb-20 min-h-screen bg-ethoBg">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           
           {/* Breadcrumb Navigation */}

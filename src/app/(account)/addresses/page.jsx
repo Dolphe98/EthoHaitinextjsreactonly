@@ -194,7 +194,7 @@ export default function AddressesPage() {
 
   if (loading) {
     return (
-      <div className="pt-32 pb-20 min-h-screen bg-ethoBg flex flex-col items-center justify-center">
+      <div className="pt-6 lg:pt-12 pb-20 min-h-screen bg-ethoBg flex flex-col items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-4 border-gray-300 border-t-haitiBlue mb-4"></div>
         <p className="font-bold text-ethoDark">Loading your address book...</p>
       </div>
@@ -202,7 +202,7 @@ export default function AddressesPage() {
   }
 
   return (
-    <main className="pt-32 pb-20 min-h-screen bg-ethoBg relative">
+    <main className="pt-6 lg:pt-12 pb-20 min-h-screen bg-ethoBg relative">
 
       {/* DELETE CONFIRMATION MODAL */}
       {isModalOpen && (

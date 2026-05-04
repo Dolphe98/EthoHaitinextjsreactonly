@@ -194,7 +194,7 @@ export default function SecurityPage() {
 
   if (loading) {
     return (
-      <div className="pt-32 pb-20 min-h-screen bg-ethoBg flex flex-col items-center justify-center">
+      <div className="pt-6 lg:pt-12 pb-20 min-h-screen bg-ethoBg flex flex-col items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-4 border-gray-300 border-t-haitiBlue mb-4"></div>
         <p className="font-bold text-ethoDark">Loading security settings...</p>
       </div>
@@ -202,7 +202,7 @@ export default function SecurityPage() {
   }
 
   return (
-    <main className="pt-32 pb-20 min-h-screen bg-ethoBg relative overflow-hidden">
+    <main className="pt-6 lg:pt-12 pb-20 min-h-screen bg-ethoBg relative overflow-hidden">
       
       {/* THE CUSTOM TOAST NOTIFICATION */}
       <div className={`fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50 transition-all duration-300 ${toast.show ? 'translate-y-0 opacity-100' : 'translate-y-20 opacity-0 pointer-events-none'}`}>

@@ -18,10 +18,10 @@ export default function SupportPage() {
     }
   }, [token, router]);
 
-  if (!mounted || !token) return <div className="pt-32 min-h-screen bg-ethoBg"></div>;
+  if (!mounted || !token) return <div className="pt-6 lg:pt-12 min-h-screen bg-ethoBg"></div>;
 
   return (
-    <main className="pt-32 pb-20 min-h-screen bg-ethoBg">
+    <main className="pt-6 lg:pt-12 pb-20 min-h-screen bg-ethoBg">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Breadcrumb Navigation */}

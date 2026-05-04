@@ -232,7 +232,7 @@ export default function CheckoutPage() {
 
   if (!mounted) {
     return (
-      <main className="pt-32 pb-20 min-h-screen bg-ethoBg">
+      <main className="pt-6 lg:pt-12 pb-20 min-h-screen bg-ethoBg">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 animate-pulse">
           <div className="h-10 bg-gray-200 rounded w-64 mb-8 mx-auto lg:mx-0"></div>
           
@@ -281,7 +281,7 @@ export default function CheckoutPage() {
 
   if (paymentSuccess) {
     return (
-      <main className="pt-32 pb-20 min-h-screen bg-ethoBg flex flex-col items-center justify-center text-center px-4">
+      <main className="pt-6 lg:pt-12 pb-20 min-h-screen bg-ethoBg flex flex-col items-center justify-center text-center px-4">
         <div className="bg-white p-12 rounded-xl shadow-lg border border-green-100 max-w-lg">
           <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor" className="w-10 h-10"><path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" /></svg>
@@ -297,7 +297,7 @@ export default function CheckoutPage() {
 
   return (
     <PayPalScriptProvider options={initialOptions}>
-      <main className="pt-32 pb-20 min-h-screen bg-ethoBg">
+      <main className="pt-6 lg:pt-12 pb-20 min-h-screen bg-ethoBg">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <h1 className="text-4xl font-extrabold text-ethoDark mb-8 text-center lg:text-left">Secure Checkout</h1>
           

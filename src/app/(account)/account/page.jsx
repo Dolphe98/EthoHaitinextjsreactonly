@@ -16,7 +16,7 @@ export default function AccountPage() {
   // MANAGER FIX: Replaced the "white screen of death" with a High-Fidelity Skeleton Loader
   if (!mounted) {
     return (
-      <main className="pt-32 pb-20 min-h-screen bg-ethoBg">
+      <main className="pt-6 lg:pt-12 pb-20 min-h-screen bg-ethoBg">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 animate-pulse">
           
           <div className="flex flex-col md:flex-row justify-between items-center mb-10 border-b border-gray-200 pb-6">
@@ -44,14 +44,14 @@ export default function AccountPage() {
 
   if (!token) {
     return (
-      <main className="pt-32 pb-20 min-h-screen bg-ethoBg px-4">
+      <main className="pt-6 lg:pt-12 pb-20 min-h-screen bg-ethoBg px-4">
         <AuthBridge />
       </main>
     );
   }
 
   return (
-    <main className="pt-32 pb-20 min-h-screen bg-ethoBg">
+    <main className="pt-6 lg:pt-12 pb-20 min-h-screen bg-ethoBg">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         
         <div className="flex flex-col md:flex-row justify-between items-center mb-10 border-b border-gray-200 pb-6">

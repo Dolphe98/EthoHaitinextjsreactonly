@@ -4,7 +4,7 @@ import Link from 'next/link';
 
 export default function GiftCardsComingSoon() {
   return (
-    <main className="pt-32 pb-20 min-h-screen bg-ethoBg flex items-center justify-center">
+    <main className="pt-6 lg:pt-12 pb-20 min-h-screen bg-ethoBg flex items-center justify-center">
       <div className="max-w-md mx-auto px-4 text-center">
         
         {/* Animated Gift Icon */}

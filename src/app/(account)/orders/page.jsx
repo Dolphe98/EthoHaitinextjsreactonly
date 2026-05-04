@@ -87,7 +87,7 @@ export default function OrdersPage() {
   // MANAGER FIX: Replaced "white screen of death" with a sleek Skeleton Loader
   if (!mounted) {
     return (
-      <main className="pt-32 pb-20 min-h-screen bg-ethoBg">
+      <main className="pt-6 lg:pt-12 pb-20 min-h-screen bg-ethoBg">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 animate-pulse">
           <div className="h-4 bg-gray-200 rounded w-1/4 mb-8"></div>
           <div className="h-8 bg-gray-200 rounded w-1/3 mb-6"></div>
@@ -108,7 +108,7 @@ export default function OrdersPage() {
 
   if (loading) {
     return (
-      <div className="pt-32 pb-20 min-h-screen bg-ethoBg flex flex-col items-center justify-center">
+      <div className="pt-6 lg:pt-12 pb-20 min-h-screen bg-ethoBg flex flex-col items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-4 border-gray-300 border-t-haitiBlue mb-4"></div>
         <p className="font-bold text-ethoDark">Loading orders...</p>
       </div>
@@ -120,7 +120,7 @@ export default function OrdersPage() {
   // ==========================================
   if (!token) {
     return (
-      <main className="pt-32 pb-20 min-h-screen bg-ethoBg">
+      <main className="pt-6 lg:pt-12 pb-20 min-h-screen bg-ethoBg">
         <div className="max-w-md mx-auto px-4 sm:px-6">
           <h1 className="text-3xl font-extrabold text-ethoDark mb-8 text-center">Track Your Order</h1>
 
@@ -233,7 +233,7 @@ export default function OrdersPage() {
   };
 
   return (
-    <main className="pt-32 pb-20 min-h-screen bg-ethoBg">
+    <main className="pt-6 lg:pt-12 pb-20 min-h-screen bg-ethoBg">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         
         <nav className="text-sm text-gray-500 mb-8 font-medium">
