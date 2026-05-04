@@ -10,11 +10,52 @@ export async function POST(request) {
       return NextResponse.json({ error: "Invalid payload format" }, { status: 400 });
     }
 
-    const eventType = payload.type; // e.g., 'order:canceled', 'order:sent-to-production', 'order:shipment:created'
+    const eventType = payload.type; 
+
+    // ==========================================
+    // 🔴 NEW: PRODUCT PUBLISHING INTERCEPTOR
+    // ==========================================
+    if (eventType === 'product:publish:started') {
+      const printifyProductId = payload.data.id;
+      console.log(`Intercepted Publish Event for Product ID: ${printifyProductId}. Sending Success Receipt...`);
+
+      try {
+        const publishRes = await fetch(`https://api.printify.com/v1/shops/${process.env.PRINTIFY_SHOP_ID}/products/${printifyProductId}/publishing_succeeded.json`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${process.env.PRINTIFY_API_KEY}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            external: {
+              id: `etho-${printifyProductId}`, 
+              // This is a dummy URL since your Next.js frontend fetches statically anyway
+              handle: `https://ethohaiti.com/product/${printifyProductId}` 
+            }
+          })
+        });
+
+        if (publishRes.ok) {
+          console.log(`✅ Automated Success Receipt sent for Product ${printifyProductId}!`);
+          return NextResponse.json({ success: true, message: "Product unlocked in Printify" }, { status: 200 });
+        } else {
+          const errText = await publishRes.text();
+          console.error("❌ Failed to auto-unlock product:", errText);
+          return NextResponse.json({ error: "Failed to unlock Printify product" }, { status: 500 });
+        }
+      } catch (err) {
+        console.error("❌ System error during auto-unlock:", err);
+        return NextResponse.json({ error: "System error unlocking product" }, { status: 500 });
+      }
+    }
+    // ==========================================
+    // 🟢 EXISTING: ORDER TRACKING LOGIC
+    // ==========================================
+    
     const printifyOrderId = payload.data.id;
     const shipments = payload.data.shipments || [];
 
-    // 2. Determine our frontend status based on Printify's exact event signal
+    // Determine our frontend status based on Printify's exact event signal
     let newStatus = 'processing'; // default fallback
     
     if (eventType === 'order:sent-to-production') {
@@ -26,17 +67,16 @@ export async function POST(request) {
     } else if (eventType === 'order:shipment:created' || payload.data.status === 'shipped') {
       newStatus = 'shipped';
     } else {
-      // If it's a general update, safely normalize Printify's text
       newStatus = payload.data.status === 'canceled' ? 'cancelled' : payload.data.status;
     }
 
-    // 3. Initialize Supabase Admin (Bypasses RLS to safely update the database)
+    // Initialize Supabase Admin
     const supabaseAdmin = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL,
       process.env.SUPABASE_SERVICE_ROLE_KEY
     );
 
-    // 4. Fetch the existing order from your database to get the rich item data
+    // Fetch the existing order from your database
     const { data: order, error: fetchError } = await supabaseAdmin
       .from('orders')
       .select('items')
@@ -48,20 +88,16 @@ export async function POST(request) {
       return NextResponse.json({ error: "Order not found" }, { status: 404 });
     }
 
-    // 5. The Split-Shipment Matcher
-    // Match Printify's boring item IDs to your actual cart items to keep the images/names intact
+    // The Split-Shipment Matcher
     let packages = [];
-    
     if (shipments.length > 0 && Array.isArray(order.items)) {
       packages = shipments.map(shipment => {
-        
         const matchedItems = order.items.filter(cartItem => 
           shipment.line_items.some(sItem => 
             sItem.variant_id === cartItem.variationId || sItem.product_id === cartItem.id
           )
         );
 
-        // Dynamically flag the specific package as delivered if Printify provides a delivery timestamp
         const pkgStatus = shipment.delivered_at ? 'delivered' : 'shipped';
 
         return {
@@ -71,14 +107,13 @@ export async function POST(request) {
           url: shipment.url,
           shipped_at: shipment.shipped_at || null,
           delivered_at: shipment.delivered_at || null,
-          items: matchedItems.length > 0 ? matchedItems : shipment.line_items // Fallback
+          items: matchedItems.length > 0 ? matchedItems : shipment.line_items 
         };
       });
     }
 
-    // 6. Update the Database!
+    // Update the Database!
     const updateData = { status: newStatus };
-    
     if (packages.length > 0) {
       updateData.packages = packages;
     }
@@ -93,7 +128,6 @@ export async function POST(request) {
       return NextResponse.json({ error: "Failed to update database" }, { status: 500 });
     }
 
-    // 7. Respond OK so Printify knows we got it
     return NextResponse.json({ success: true, message: `Handled ${eventType} successfully` }, { status: 200 });
 
   } catch (error) {
