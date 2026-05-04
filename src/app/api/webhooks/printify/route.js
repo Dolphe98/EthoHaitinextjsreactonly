@@ -5,19 +5,31 @@ export async function POST(request) {
   try {
     const payload = await request.json();
 
-    // 1. Verify this is actually a payload from Printify
-    if (!payload.type || !payload.data || !payload.data.id) {
+    // 🕵️ THE X-RAY: Log the exact payload so we can see what Printify is sending
+    console.log("📦 RAW PRINTIFY PAYLOAD:", JSON.stringify(payload, null, 2));
+
+    // 1. Basic Verification (Loosened to accept different Printify formats)
+    if (!payload || !payload.type) {
+      console.log("❌ Rejected: No payload type found.");
       return NextResponse.json({ error: "Invalid payload format" }, { status: 400 });
     }
 
-    const eventType = payload.type; 
+    const eventType = payload.type;
 
     // ==========================================
-    // 🔴 NEW: PRODUCT PUBLISHING INTERCEPTOR
+    // 🔴 PRODUCT PUBLISHING INTERCEPTOR
     // ==========================================
-    if (eventType === 'product:publish:started') {
-      const printifyProductId = payload.data.id;
-      console.log(`Intercepted Publish Event for Product ID: ${printifyProductId}. Sending Success Receipt...`);
+    if (eventType === 'product:publish:started' || eventType === 'shop:product:publish:started') {
+      
+      // Safely extract the ID (Printify sometimes puts it in data.id, resource.id, or just id)
+      const printifyProductId = payload.data?.id || payload.resource?.id || payload.id;
+
+      if (!printifyProductId) {
+         console.log("❌ Could not find Product ID in this payload.");
+         return NextResponse.json({ error: "Missing Product ID" }, { status: 400 });
+      }
+
+      console.log(`▶️ Intercepted Publish Event for Product ID: ${printifyProductId}. Sending Success Receipt...`);
 
       try {
         const publishRes = await fetch(`https://api.printify.com/v1/shops/${process.env.PRINTIFY_SHOP_ID}/products/${printifyProductId}/publishing_succeeded.json`, {
@@ -29,7 +41,6 @@ export async function POST(request) {
           body: JSON.stringify({
             external: {
               id: `etho-${printifyProductId}`, 
-              // This is a dummy URL since your Next.js frontend fetches statically anyway
               handle: `https://ethohaiti.com/product/${printifyProductId}` 
             }
           })
@@ -48,10 +59,17 @@ export async function POST(request) {
         return NextResponse.json({ error: "System error unlocking product" }, { status: 500 });
       }
     }
+
     // ==========================================
     // 🟢 EXISTING: ORDER TRACKING LOGIC
     // ==========================================
     
+    // If it's an order event, it MUST have data.id. If not, safely ignore it instead of throwing a 400 error.
+    if (!payload.data || !payload.data.id) {
+       console.log("⚠️ Ignored: Event did not match expected order format.");
+       return NextResponse.json({ success: true, message: "Ignored unhandled event type" }, { status: 200 });
+    }
+
     const printifyOrderId = payload.data.id;
     const shipments = payload.data.shipments || [];
 
@@ -60,14 +78,14 @@ export async function POST(request) {
     
     if (eventType === 'order:sent-to-production') {
       newStatus = 'in production';
-    } else if (eventType === 'order:canceled' || payload.data.status === 'canceled') {
+    } else if (eventType === 'order:canceled' || payload.data?.status === 'canceled') {
       newStatus = 'cancelled';
     } else if (eventType === 'order:shipment:delivered') {
       newStatus = 'delivered';
-    } else if (eventType === 'order:shipment:created' || payload.data.status === 'shipped') {
+    } else if (eventType === 'order:shipment:created' || payload.data?.status === 'shipped') {
       newStatus = 'shipped';
     } else {
-      newStatus = payload.data.status === 'canceled' ? 'cancelled' : payload.data.status;
+      newStatus = payload.data?.status === 'canceled' ? 'cancelled' : (payload.data?.status || 'processing');
     }
 
     // Initialize Supabase Admin
@@ -84,8 +102,8 @@ export async function POST(request) {
       .single();
 
     if (fetchError || !order) {
-      console.error("Order not found in DB for Printify ID:", printifyOrderId);
-      return NextResponse.json({ error: "Order not found" }, { status: 404 });
+      console.error(`⚠️ Order not found in DB for Printify ID: ${printifyOrderId}`);
+      return NextResponse.json({ success: true, message: "Order not found, skipped." }, { status: 200 });
     }
 
     // The Split-Shipment Matcher
