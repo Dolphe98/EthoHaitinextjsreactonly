@@ -5,6 +5,7 @@ import { useAuthStore } from '@/store/authStore';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase'; 
+import AffiliateTermsContent from '@/components/ui/AffiliateTermsContent';
 
 export default function AffiliatesPage() {
   const { token, user } = useAuthStore();
@@ -134,76 +135,9 @@ export default function AffiliatesPage() {
               </button>
             </div>
             
-            <div className="p-6 sm:p-8 overflow-y-auto prose prose-sm sm:prose-base text-gray-600 max-w-none space-y-4">
-              <p className="font-bold text-ethoDark">Company: EthoHaiti | Effective Date: 4/26/2026 | Governing Law: Dominican Republic</p>
-              
-              <h3 className="font-bold text-lg text-ethoDark mt-6">1. ACCEPTANCE OF TERMS AND DEFINITIONS</h3>
-              <p>By applying to and participating in the EthoHaiti affiliate program, you (&quot;Partner&quot;) agree to be bound by these Terms and Conditions (&quot;Agreement&quot;). This Agreement constitutes a legally binding contract between you and EthoHaiti (&quot;Company&quot;, &quot;we&quot;, &quot;us&quot;, or &quot;our&quot;).</p>
-              <p className="font-bold">Definitions:</p>
-              <ul className="list-disc pl-5">
-                <li><strong>&quot;Company&quot;</strong> refers to EthoHaiti, the operator and owner of this affiliate program.</li>
-                <li><strong>&quot;Partner&quot;</strong> refers to any individual or business entity that has been accepted into and participates in the Company&apos;s affiliate marketing program.</li>
-                <li><strong>&quot;Program&quot;</strong> refers to the EthoHaiti affiliate marketing program described in this Agreement.</li>
-                <li><strong>&quot;Products/Services&quot;</strong> refers to the physical products offered and sold by the Company.</li>
-                <li><strong>&quot;Affiliate Link&quot;</strong> refers to the unique tracking link provided to the Affiliate for promoting the Company&apos;s products or services.</li>
-                <li><strong>&quot;Commission&quot;</strong> refers to the compensation paid to Affiliate for qualified referrals as defined herein.</li>
-              </ul>
-
-              <h3 className="font-bold text-lg text-ethoDark mt-6">2. AFFILIATE PROGRAM PARTICIPATION</h3>
-              <p className="font-bold">2.1 Eligibility Requirements</p>
-              <p>To participate in our affiliate program, you must be at least 18 years of age, have an active social media presence or website, and have the legal capacity to enter into this Agreement.</p>
-              <p>The Company reserves the right, in its sole discretion, to accept or reject any affiliate application. We may terminate or suspend any affiliate&apos;s participation at any time for any reason, including but not limited to violations of this Agreement or conduct that we deem harmful to our business or reputation.</p>
-              <p className="font-bold mt-4">2.2 Application and Approval Process</p>
-              <p>All prospective affiliates must complete an application process and receive formal approval before beginning promotional activities. Upon approval, you will receive access to your affiliate dashboard, promotional materials, and your unique affiliate tracking links. You may not begin promoting our products or services until you have received formal approval.</p>
-
-              <h3 className="font-bold text-lg text-ethoDark mt-6">3. TRACKING, ATTRIBUTION, AND CONVERSION REQUIREMENTS</h3>
-              <p className="font-bold">3.1 Tracking Technology and Attribution Model</p>
-              <p>Our affiliate program utilizes cookie technology to track and attribute sales. All referrals must be made through your approved affiliate links to qualify for commission payments.</p>
-              <p>We employ a last-click attribution model with a 60-day attribution window. If a customer clicks on your affiliate link and makes a qualifying purchase within 60 days of that initial click, you will receive credit for that conversion.</p>
-              <p className="font-bold mt-4">3.2 Conversion and Commission Eligibility</p>
-              <p>Only legitimate sales generated through your approved affiliate links will qualify for commission payments. The customer must be new or meet the specific requirements outlined in your affiliate dashboard. Additionally, the purchase must not be refunded, charged back, or otherwise reversed during the validation period.</p>
-
-              <h3 className="font-bold text-lg text-ethoDark mt-6">4. COMMISSION STRUCTURE AND PAYMENT TERMS</h3>
-              <p className="font-bold">4.1 Commission Rates and Structure</p>
-              <p>Affiliates will receive a commission equal to 15% of the net sale amount for each qualifying conversion. The commission percentage applies to the actual purchase price paid by the customer, excluding taxes, shipping fees, and any discounts or refunds.</p>
-              <p className="font-bold mt-4">4.2 Payment Schedule and Methods</p>
-              <p>Commission payments are processed on a monthly basis. Payments will be made approximately 30 days after the end of each payment period.</p>
-              <p><strong>Minimum Payout Threshold:</strong> You must accumulate at least USD 20 in eligible commissions before a payment will be issued. If your balance is below this threshold, your earnings will roll over to the next period. Available Payment Methods: Payments are issued via PayPal in USD and other.</p>
-              <p className="font-bold mt-4">4.3 Commission Validation and Holding Period</p>
-              <p>All sales are subject to a 30-day validation period to allow for potential returns or chargebacks. During this period, commissions will be held in a &quot;pending&quot; status. In the event of a chargeback, refund, or return on a print-on-demand order, any commissions credited to the affiliate for that specific sale will be voided and deducted from their pending balance.</p>
-
-              <h3 className="font-bold text-lg text-ethoDark mt-6">5. PROHIBITED PRACTICES AND COMPLIANCE</h3>
-              <p className="font-bold">5.1 Prohibited Marketing Practices</p>
-              <p>To maintain the integrity of our brand, the following practices are strictly prohibited:</p>
-              <ul className="list-disc pl-5">
-                <li><strong>Brand Bidding:</strong> Affiliates are prohibited from running Pay-Per-Click (PPC) campaigns (such as Google Ads or Bing Ads) bidding on the Company name &quot;EthoHaiti&quot;, trademarked terms, brand names, or any variations thereof.</li>
-                <li><strong>Impersonation:</strong> Affiliates may not represent themselves as the official EthoHaiti store. Affiliates are prohibited from creating social media accounts, domains, or pages that include &quot;EthoHaiti&quot; in the handle or URL in a way that implies they are the official brand.</li>
-                <li><strong>Spam and Fraud:</strong> The use of bots, click farms, automated traffic generation, incentivized clicks, or unsolicited spam emails is strictly prohibited.</li>
-              </ul>
-              <p className="font-bold mt-4">5.2 Legal Compliance and Disclosure Requirements</p>
-              <p>You must clearly and conspicuously disclose your affiliate relationship with the Company in all promotional materials. This includes using hashtags such as #ad, #affiliate, or #sponsored in social media posts, videos, and other promotional content in accordance with FTC guidelines.</p>
-
-              <h3 className="font-bold text-lg text-ethoDark mt-6">6. MARKETING MATERIALS AND BRAND USAGE</h3>
-              <p className="font-bold">6.1 Approved Materials</p>
-              <p>Affiliates may only use pre-approved banners, images, and promotional content provided in the affiliate portal. Modification of provided materials or logos requires written approval from the Company.</p>
-              <p className="font-bold mt-4">6.2 Discount Codes</p>
-              <p>If provided with custom discount codes, they are for your promotional use only. Submitting your exclusive discount codes to third-party coupon sites (e.g., Honey, RetailMeNot) is strictly prohibited and will result in immediate termination and forfeiture of pending commissions.</p>
-
-              <h3 className="font-bold text-lg text-ethoDark mt-6">7. TERM, TERMINATION, AND SURVIVAL</h3>
-              <p>Either party may terminate this Agreement at any time, with or without cause, and without prior notice. Upon termination, you must immediately cease all promotional activities, remove all affiliate links, and discontinue use of our marketing materials. All pending commissions will be forfeited upon termination if the termination is due to a violation of these terms.</p>
-
-              <h3 className="font-bold text-lg text-ethoDark mt-6">8. GOVERNING LAW AND DISPUTES</h3>
-              <p>These terms are governed by the laws of the Dominican Republic, specifically the jurisdiction of Santo Domingo, Distrito Nacional. Any disputes arising from this agreement will be resolved in this jurisdiction.</p>
-
-              <h3 className="font-bold text-lg text-ethoDark mt-6">9. CONTACT INFORMATION</h3>
-              <p>For questions regarding these terms or the affiliate program:<br/>
-              EthoHaiti Email: <a href="mailto:partners@ethohaiti.com" className="text-haitiBlue hover:underline">partners@ethohaiti.com</a><br/>
-              Website: <a href="https://www.ethohaiti.com/affiliates" className="text-haitiBlue hover:underline">https://www.ethohaiti.com/affiliates</a></p>
-
-              <div className="bg-gray-100 p-4 rounded-lg mt-6 text-center">
-                <p className="font-bold text-ethoDark">ACKNOWLEDGMENT AND ACCEPTANCE</p>
-                <p className="text-sm">By participating in the affiliate program, you acknowledge that you have read, understood, and agree to be bound by all terms and conditions set forth in this Agreement. Your electronic acceptance through the affiliate application process constitutes your electronic signature.</p>
-              </div>
+            {/* INJECT THE COMPONENT HERE */}
+            <div className="p-6 sm:p-8 overflow-y-auto prose prose-sm sm:prose-base text-gray-600 max-w-none">
+              <AffiliateTermsContent />
             </div>
             
             <div className="p-6 border-t border-gray-100 bg-gray-50 rounded-b-xl text-right">
