@@ -103,8 +103,8 @@ export default function AffiliatesPage() {
   };
 
   const videoUrls = {
-    kreyol: "https://www.youtube.com/embed/YOUR_KREYOL_VIDEO_ID",
-    english: "https://www.youtube.com/embed/YOUR_ENGLISH_VIDEO_ID"
+    kreyol: "https://www.youtube.com/embed/wDo-ozW6J04?rel=0&modestbranding=1",
+    english: null // English is coming soon
   };
 
   // High-Fidelity Skeleton Loader
@@ -197,9 +197,21 @@ export default function AffiliatesPage() {
 
             {/* Cinematic Video Player */}
             <div className="w-full aspect-video bg-black rounded-xl mb-12 shadow-lg border border-gray-200 overflow-hidden relative">
-              <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-white/50 font-bold tracking-widest uppercase">Video Player ({activeLanguage})</span>
-              </div>
+              {activeLanguage === 'kreyol' ? (
+                <iframe 
+                  className="absolute inset-0 w-full h-full"
+                  src={videoUrls.kreyol}
+                  title="EthoHaiti Partner Program (Kreyòl)"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                  allowFullScreen
+                ></iframe>
+              ) : (
+                <div className="absolute inset-0 flex items-center justify-center bg-black">
+                  <span className="text-white font-extrabold tracking-[0.3em] uppercase text-2xl sm:text-3xl md:text-4xl animate-pulse">
+                    Coming Soon
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* 3. THE 5-STEP VISUAL GUIDE */}
