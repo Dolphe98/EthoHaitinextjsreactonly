@@ -1,17 +1,35 @@
 import { NextResponse } from 'next/server';
 
-const { NEXT_PUBLIC_PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET } = process.env;
+// 1. DYNAMIC ENVIRONMENT SETUP
+const isLive = process.env.NEXT_PUBLIC_PAYPAL_ENVIRONMENT === 'live';
 
-// Switch to "https://api-m.paypal.com" when you go live
-const base = "https://api-m.sandbox.paypal.com"; 
+// Select the correct base URL based on environment
+const base = isLive 
+  ? "https://api-m.paypal.com" 
+  : "https://api-m.sandbox.paypal.com";
+
+// Select the correct Credentials based on environment
+const clientId = isLive 
+  ? process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID_LIVE 
+  : process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID_SANDBOX;
+
+const clientSecret = isLive 
+  ? process.env.PAYPAL_SECRET_LIVE 
+  : process.env.PAYPAL_CLIENT_SECRET_SANDBOX;
 
 async function generateAccessToken() {
-  const auth = Buffer.from(NEXT_PUBLIC_PAYPAL_CLIENT_ID + ":" + PAYPAL_CLIENT_SECRET).toString("base64");
+  if (!clientId || !clientSecret) {
+    throw new Error("Missing PayPal credentials for the current environment.");
+  }
+
+  const auth = Buffer.from(clientId + ":" + clientSecret).toString("base64");
+  
   const response = await fetch(`${base}/v1/oauth2/token`, {
     method: "POST",
     body: "grant_type=client_credentials",
     headers: { Authorization: `Basic ${auth}` },
   });
+
   const data = await response.json();
   return data.access_token;
 }
@@ -49,6 +67,12 @@ export async function POST(req) {
     });
 
     const order = await response.json();
+
+    if (!order.id) {
+      console.error("PayPal Error Response:", order);
+      return NextResponse.json({ error: "Failed to generate Order ID from PayPal." }, { status: 500 });
+    }
+
     return NextResponse.json({ id: order.id });
   } catch (error) {
     console.error("Failed to create PayPal order:", error);

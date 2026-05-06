@@ -135,8 +135,14 @@ export default function CheckoutPage() {
     getShippingCost();
   }, [address, cart, hasUnconfiguredItems]);
 
+  // MANAGER FIX: Dynamically grab the correct Client ID based on the Vercel toggle
+  const isLive = process.env.NEXT_PUBLIC_PAYPAL_ENVIRONMENT === 'live';
+  const paypalClientId = isLive 
+    ? process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID_LIVE 
+    : process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID_SANDBOX;
+
   const initialOptions = {
-    "client-id": process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID,
+    "client-id": paypalClientId,
     currency: "USD",
     intent: "capture",
   };
@@ -601,7 +607,7 @@ export default function CheckoutPage() {
                         <h3 className="font-extrabold text-haitiRed mb-2 text-lg">Action Required</h3>
                         <p className="text-sm text-red-800 font-medium">Please select a size and color for the highlighted items in your order summary above before paying.</p>
                       </div>
-                    ) : process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID ? (
+                    ) : paypalClientId ? (
                       <PayPalButtons 
                         createOrder={createOrder} 
                         onApprove={onApprove} 
@@ -609,7 +615,7 @@ export default function CheckoutPage() {
                       />
                     ) : (
                       <div className="p-4 bg-red-50 text-red-600 font-bold rounded border border-red-200 text-center">
-                        Missing PayPal Client ID in Environment Variables.
+                        Missing PayPal Client ID for {isLive ? 'Live' : 'Sandbox'} Environment.
                       </div>
                     )}
                   </div>

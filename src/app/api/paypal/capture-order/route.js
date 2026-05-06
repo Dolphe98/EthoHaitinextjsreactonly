@@ -3,9 +3,8 @@ import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
 import OrderReceipt from '@/emails/OrderReceipt';
 
+// Notice: Removed the old hardcoded PayPal keys from here
 const { 
-  NEXT_PUBLIC_PAYPAL_CLIENT_ID, 
-  PAYPAL_CLIENT_SECRET,
   PRINTIFY_SHOP_ID,
   PRINTIFY_API_TOKEN,
   NEXT_PUBLIC_SUPABASE_URL,
@@ -13,14 +12,34 @@ const {
   RESEND_API_KEY
 } = process.env;
 
-const base = "https://api-m.sandbox.paypal.com"; 
+// ==========================================
+// DYNAMIC PAYPAL ENVIRONMENT SETUP
+// ==========================================
+const isLive = process.env.NEXT_PUBLIC_PAYPAL_ENVIRONMENT === 'live';
+
+const base = isLive 
+  ? "https://api-m.paypal.com" 
+  : "https://api-m.sandbox.paypal.com";
+
+const clientId = isLive 
+  ? process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID_LIVE 
+  : process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID_SANDBOX;
+
+const clientSecret = isLive 
+  ? process.env.PAYPAL_SECRET_LIVE 
+  : process.env.PAYPAL_CLIENT_SECRET_SANDBOX;
+
 
 // Initialize Supabase Admin Client & Resend
 const supabase = createClient(NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 const resend = new Resend(RESEND_API_KEY);
 
 async function generateAccessToken() {
-  const auth = Buffer.from(NEXT_PUBLIC_PAYPAL_CLIENT_ID + ":" + PAYPAL_CLIENT_SECRET).toString("base64");
+  if (!clientId || !clientSecret) {
+    throw new Error("Missing PayPal credentials for the current environment.");
+  }
+  
+  const auth = Buffer.from(clientId + ":" + clientSecret).toString("base64");
   const response = await fetch(`${base}/v1/oauth2/token`, {
     method: "POST",
     body: "grant_type=client_credentials",
