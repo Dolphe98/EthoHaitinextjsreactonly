@@ -1,21 +1,11 @@
 import { NextResponse } from 'next/server';
 
-// 1. DYNAMIC ENVIRONMENT SETUP
-const isLive = process.env.NEXT_PUBLIC_PAYPAL_ENVIRONMENT === 'live';
-
-// Select the correct base URL based on environment
-const base = isLive 
-  ? "https://api-m.paypal.com" 
-  : "https://api-m.sandbox.paypal.com";
-
-// Select the correct Credentials based on environment
-const clientId = isLive 
-  ? process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID_LIVE 
-  : process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID_SANDBOX;
-
-const clientSecret = isLive 
-  ? process.env.PAYPAL_SECRET_LIVE 
-  : process.env.PAYPAL_CLIENT_SECRET_SANDBOX;
+// ==========================================
+// PAYPAL LIVE ENVIRONMENT SETUP
+// ==========================================
+const base = "https://api-m.paypal.com";
+const clientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID_LIVE;
+const clientSecret = process.env.PAYPAL_SECRET_LIVE;
 
 async function generateAccessToken() {
   if (!clientId || !clientSecret) {

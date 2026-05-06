@@ -13,21 +13,11 @@ const {
 } = process.env;
 
 // ==========================================
-// DYNAMIC PAYPAL ENVIRONMENT SETUP
+// PAYPAL LIVE ENVIRONMENT SETUP
 // ==========================================
-const isLive = process.env.NEXT_PUBLIC_PAYPAL_ENVIRONMENT === 'live';
-
-const base = isLive 
-  ? "https://api-m.paypal.com" 
-  : "https://api-m.sandbox.paypal.com";
-
-const clientId = isLive 
-  ? process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID_LIVE 
-  : process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID_SANDBOX;
-
-const clientSecret = isLive 
-  ? process.env.PAYPAL_SECRET_LIVE 
-  : process.env.PAYPAL_CLIENT_SECRET_SANDBOX;
+const base = "https://api-m.paypal.com";
+const clientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID_LIVE;
+const clientSecret = process.env.PAYPAL_SECRET_LIVE;
 
 
 // Initialize Supabase Admin Client & Resend

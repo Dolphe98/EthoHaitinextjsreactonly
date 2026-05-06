@@ -135,11 +135,8 @@ export default function CheckoutPage() {
     getShippingCost();
   }, [address, cart, hasUnconfiguredItems]);
 
-  // MANAGER FIX: Dynamically grab the correct Client ID based on the Vercel toggle
-  const isLive = process.env.NEXT_PUBLIC_PAYPAL_ENVIRONMENT === 'live';
-  const paypalClientId = isLive 
-    ? process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID_LIVE 
-    : process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID_SANDBOX;
+  // MANAGER FIX: Permanently locked to Live Environment
+  const paypalClientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID_LIVE;
 
   const initialOptions = {
     "client-id": paypalClientId,
@@ -615,7 +612,7 @@ export default function CheckoutPage() {
                       />
                     ) : (
                       <div className="p-4 bg-red-50 text-red-600 font-bold rounded border border-red-200 text-center">
-                        Missing PayPal Client ID for {isLive ? 'Live' : 'Sandbox'} Environment.
+                        Missing PayPal Live Client ID in Environment Variables.
                       </div>
                     )}
                   </div>
