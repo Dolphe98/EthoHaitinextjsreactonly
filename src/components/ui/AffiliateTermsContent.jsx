@@ -119,13 +119,17 @@ export default function AffiliateTermsContent() {
           <p>For questions regarding these terms or the affiliate program:</p>
           <ul className="list-none pl-0 space-y-2 font-bold text-xl mt-4">
             <li>EthoHaiti Email: <a href="mailto:partners@ethohaiti.com" className="text-haitiBlue hover:underline">partners@ethohaiti.com</a></li>
-            <li>Website: <a href="https://www.ethohaiti.com/affiliates" className="text-haitiBlue hover:underline">https://www.ethohaiti.com/affiliates</a></li>
+            <li>Website: <a href="https://www.ethohaiti.com/affiliates" className="text-haitiBlue hover:underline break-all">https://www.ethohaiti.com/affiliates</a></li>
           </ul>
         </div>
 
-        <div className="bg-gray-50 border-2 border-gray-200 p-8 md:p-12 rounded-xl mt-16 text-center shadow-inner">
-          <h2 className="text-2xl md:text-3xl font-black text-ethoDark mb-4 uppercase tracking-wider">ACKNOWLEDGMENT AND ACCEPTANCE</h2>
-          <p className="text-xl leading-relaxed text-gray-700 m-0">By participating in the affiliate program, you acknowledge that you have read, understood, and agree to be bound by all terms and conditions set forth in this Agreement. Your electronic acceptance through the affiliate application process constitutes your electronic signature.</p>
+        <div className="bg-gray-50 border-2 border-gray-200 p-6 sm:p-8 md:p-12 rounded-xl mt-16 text-center shadow-inner overflow-hidden">
+          <h2 className="text-xl sm:text-2xl md:text-3xl font-black text-ethoDark mb-4 uppercase tracking-tight sm:tracking-wider break-words">
+            ACKNOWLEDGMENT AND ACCEPTANCE
+          </h2>
+          <p className="text-base sm:text-lg md:text-xl leading-relaxed text-gray-700 m-0">
+            By participating in the affiliate program, you acknowledge that you have read, understood, and agree to be bound by all terms and conditions set forth in this Agreement. Your electronic acceptance through the affiliate application process constitutes your electronic signature.
+          </p>
         </div>
         
       </div>
