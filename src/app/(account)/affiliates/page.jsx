@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase'; 
 import AffiliateTermsContent from '@/components/ui/AffiliateTermsContent';
+import { formatPhoneNumber } from '@/utils/formatPhone';
 
 export default function AffiliatesPage() {
   const { token, user } = useAuthStore();
@@ -264,8 +265,8 @@ export default function AffiliatesPage() {
                       <input 
                         type="tel" 
                         value={form.phone} 
-                        onChange={(e) => setForm({...form, phone: e.target.value})} 
-                        placeholder="(555) 555-5555" 
+                        onChange={(e) => setForm({...form, phone: formatPhoneNumber(e.target.value)})} 
+                        placeholder="(555) 555-5555 or +1..." 
                         className="w-full px-4 py-3 border border-gray-300 rounded focus:ring-2 focus:ring-haitiBlue focus:outline-none text-black" 
                         required 
                       />
